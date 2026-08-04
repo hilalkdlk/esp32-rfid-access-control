@@ -11,9 +11,9 @@ export default function HeaderNav({ activeTab, setActiveTab, esp32Status, toggle
   return (
     <header style={{ marginBottom: '24px' }}>
       {/* Header Top Bar */}
-      <div className="glass-panel" style={{ padding: '16px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+      <div className="glass-panel glow-card-indigo" style={{ padding: '16px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ padding: '10px', background: '#6366f1', borderRadius: '10px', color: '#ffffff', display: 'flex' }}>
+          <div style={{ padding: '10px', background: 'linear-gradient(135deg, #6366f1 0%, #38bdf8 100%)', borderRadius: '10px', color: '#ffffff', display: 'flex', boxShadow: '0 0 14px rgba(99, 102, 241, 0.5)' }}>
             <Cpu size={22} />
           </div>
           <div>
@@ -28,7 +28,7 @@ export default function HeaderNav({ activeTab, setActiveTab, esp32Status, toggle
 
         {/* ESP32 Status Badge & Online Switch */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: '#1e293b', border: '1px solid #475569', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 14px', background: '#1e293b', border: '1px solid #475569', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600 }}>
             <span className={esp32Status.isOnline ? "pulse-dot pulse-online" : "pulse-dot pulse-offline"}></span>
             <span style={{ color: esp32Status.isOnline ? '#38bdf8' : '#f59e0b' }}>
               {esp32Status.isOnline ? 'ESP32 Online (API)' : 'ESP32 Offline (LittleFS)'}
@@ -49,7 +49,7 @@ export default function HeaderNav({ activeTab, setActiveTab, esp32Status, toggle
         </div>
       </div>
 
-      {/* Simplified 3-Step Navigation Bar */}
+      {/* 3-Step Navigation Bar with Neon Active Step Glow */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
         {steps.map((step) => {
           const Icon = step.icon;
@@ -58,17 +58,15 @@ export default function HeaderNav({ activeTab, setActiveTab, esp32Status, toggle
             <button
               key={step.id}
               onClick={() => setActiveTab(step.id)}
-              className="glass-panel"
+              className={`glass-panel ${isActive ? 'neon-active-step' : ''}`}
               style={{
                 padding: '14px 16px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                border: isActive ? '2px solid #6366f1' : '1px solid #475569',
                 background: isActive ? '#334155' : '#1e293b',
-                boxShadow: isActive ? '0 4px 16px rgba(99, 102, 241, 0.25)' : 'none',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.25s ease'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -77,7 +75,8 @@ export default function HeaderNav({ activeTab, setActiveTab, esp32Status, toggle
                   borderRadius: '8px',
                   background: isActive ? '#6366f1' : '#475569',
                   color: isActive ? '#ffffff' : '#cbd5e1',
-                  display: 'flex'
+                  display: 'flex',
+                  boxShadow: isActive ? '0 0 12px rgba(99, 102, 241, 0.6)' : 'none'
                 }}>
                   <Icon size={18} />
                 </div>

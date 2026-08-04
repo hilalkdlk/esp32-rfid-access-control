@@ -1,29 +1,35 @@
-/* Slightly Lighter Medium Slate Theme - ESP32 Access Control Admin */
+/* Medium Slate Luxury Theme with Neon Glow Effects - ESP32 Access Control Admin */
 :root {
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
-  /* Slightly Lighter Medium Slate Palette */
-  --bg-primary: #293548;       /* Bir tık daha açık Slate Arka Plan */
-  --bg-secondary: #334155;     /* Slate 700 - Kart Zeminleri */
-  --bg-card: #334155;          /* Kart ve Panel Rengi */
-  --bg-card-hover: #475569;    /* Slate 600 - Üzerine Gelince */
+  /* Medium Slate Palette */
+  --bg-primary: #293548;       /* Slate Background */
+  --bg-secondary: #334155;     /* Slate 700 - Card Base */
+  --bg-card: #334155;          /* Card Background */
+  --bg-card-hover: #3d4d65;    /* Hover State */
   --bg-glass: rgba(51, 65, 85, 0.9);
-  --border-glass: #475569;     /* Çerçeve Rengi */
+  --border-glass: #475569;     /* Border */
   --border-active: #818cf8;
 
-  --accent-primary: #6366f1;   /* Canlı Indigo */
+  --accent-primary: #6366f1;   /* Indigo Glow */
   --accent-primary-hover: #4f46e5;
-  --accent-secondary: #38bdf8; /* Canlı Cyan */
-  --accent-success: #10b981;   /* Emerald Yeşil */
-  --accent-danger: #f43f5e;    /* Rose Kırmızı */
-  --accent-warning: #f59e0b;   /* Amber Turuncu */
+  --accent-secondary: #38bdf8; /* Cyan Glow */
+  --accent-success: #10b981;   /* Emerald Glow */
+  --accent-danger: #f43f5e;    /* Rose Red Glow */
+  --accent-warning: #f59e0b;   /* Amber Glow */
 
   --text-main: #ffffff;
   --text-muted: #cbd5e1;
   --text-light: #f1f5f9;
 
-  --shadow-card: 0 8px 20px -4px rgba(0, 0, 0, 0.18);
+  /* Glow Shadows */
+  --shadow-card: 0 8px 20px -4px rgba(0, 0, 0, 0.25);
+  --glow-indigo: 0 0 18px rgba(99, 102, 241, 0.35);
+  --glow-cyan: 0 0 18px rgba(56, 189, 248, 0.35);
+  --glow-emerald: 0 0 18px rgba(16, 185, 129, 0.35);
+  --glow-rose: 0 0 18px rgba(244, 63, 94, 0.35);
+
   --radius-lg: 14px;
   --radius-md: 10px;
   --radius-sm: 8px;
@@ -42,19 +48,81 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   line-height: 1.5;
+  background-image: 
+    radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.08) 0%, transparent 45%),
+    radial-gradient(circle at 90% 90%, rgba(56, 189, 248, 0.08) 0%, transparent 45%);
+  background-attachment: fixed;
 }
 
-/* Panel */
+/* Glass Panel with Glow Border Effect */
 .glass-panel {
   background: var(--bg-card);
   border: 1px solid var(--border-glass);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
 }
 
 .glass-panel:hover {
-  border-color: #64748b;
+  border-color: #6366f1;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 0 15px rgba(99, 102, 241, 0.25);
+}
+
+/* Specific Glow Cards */
+.glow-card-indigo {
+  border: 1px solid rgba(99, 102, 241, 0.4) !important;
+  box-shadow: var(--glow-indigo) !important;
+}
+
+.glow-card-indigo:hover {
+  box-shadow: 0 0 25px rgba(99, 102, 241, 0.5) !important;
+  border-color: #818cf8 !important;
+}
+
+.glow-card-emerald {
+  border: 1px solid rgba(16, 185, 129, 0.4) !important;
+  box-shadow: var(--glow-emerald) !important;
+}
+
+.glow-card-emerald:hover {
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.5) !important;
+  border-color: #34d399 !important;
+}
+
+.glow-card-rose {
+  border: 1px solid rgba(244, 63, 94, 0.4) !important;
+  box-shadow: var(--glow-rose) !important;
+}
+
+.glow-card-rose:hover {
+  box-shadow: 0 0 25px rgba(244, 63, 94, 0.5) !important;
+  border-color: #fb7185 !important;
+}
+
+.glow-card-cyan {
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  box-shadow: var(--glow-cyan) !important;
+}
+
+.glow-card-cyan:hover {
+  box-shadow: 0 0 25px rgba(56, 189, 248, 0.5) !important;
+  border-color: #38bdf8 !important;
+}
+
+/* Pulsing Neon Animation */
+@keyframes neonPulse {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.3), inset 0 0 12px rgba(99, 102, 241, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(99, 102, 241, 0.6), inset 0 0 20px rgba(99, 102, 241, 0.3);
+  }
+}
+
+.neon-active-step {
+  border: 2px solid #6366f1 !important;
+  animation: neonPulse 2.5s infinite ease-in-out;
 }
 
 /* Buttons */
@@ -69,18 +137,18 @@ body {
   border-radius: var(--radius-sm);
   border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s ease;
   text-decoration: none;
 }
 
 .btn-primary {
-  background: var(--accent-primary);
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
   color: #ffffff;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
 }
 
 .btn-primary:hover {
-  background: var(--accent-primary-hover);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6);
   transform: translateY(-1px);
 }
 
@@ -92,16 +160,17 @@ body {
 
 .btn-secondary:hover {
   background: #64748b;
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.15);
 }
 
 .btn-success {
-  background: var(--accent-success);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: white;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
 }
 
 .btn-success:hover {
-  background: #059669;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6);
 }
 
 .btn-danger {
@@ -112,6 +181,7 @@ body {
 
 .btn-danger:hover {
   background: rgba(244, 63, 94, 0.35);
+  box-shadow: 0 0 14px rgba(244, 63, 94, 0.4);
 }
 
 .btn-sm {
@@ -119,7 +189,7 @@ body {
   font-size: 0.8rem;
 }
 
-/* Badges */
+/* Glowing Badges */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -134,6 +204,7 @@ body {
   background: rgba(16, 185, 129, 0.2);
   color: #6ee7b7;
   border: 1px solid rgba(16, 185, 129, 0.4);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
 }
 
 .badge-passive {
@@ -146,12 +217,14 @@ body {
   background: rgba(244, 63, 94, 0.2);
   color: #fca5a5;
   border: 1px solid rgba(244, 63, 94, 0.4);
+  box-shadow: 0 0 10px rgba(244, 63, 94, 0.25);
 }
 
 .badge-online {
   background: rgba(56, 189, 248, 0.2);
   color: #7dd3fc;
   border: 1px solid rgba(56, 189, 248, 0.4);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
 }
 
 .badge-offline {
@@ -160,7 +233,7 @@ body {
   border: 1px solid rgba(245, 158, 11, 0.4);
 }
 
-/* Inputs & Form Controls */
+/* Form Controls */
 .form-group {
   margin-bottom: 16px;
 }
@@ -187,8 +260,8 @@ body {
 }
 
 .form-input:focus, .form-select:focus {
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+  border-color: #818cf8;
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.35);
   background: #1e293b;
 }
 
@@ -197,7 +270,7 @@ body {
   letter-spacing: 0.5px;
 }
 
-/* Table Styling */
+/* Custom Table */
 .custom-table {
   width: 100%;
   border-collapse: collapse;
@@ -224,10 +297,10 @@ body {
 }
 
 .custom-table tr:hover td {
-  background: #1e293b;
+  background: #293548;
 }
 
-/* Visual NFC Card Preview Component */
+/* Glowing Holographic NFC Card Preview */
 .nfc-card-container {
   perspective: 1000px;
 }
@@ -239,19 +312,20 @@ body {
   height: 215px;
   border-radius: 16px;
   padding: 22px;
-  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4338ca 100%);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.5);
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 15px 35px -10px rgba(0, 0, 0, 0.6), 0 0 25px rgba(99, 102, 241, 0.4);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   overflow: hidden;
   color: #ffffff;
-  transition: transform 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .nfc-card-preview:hover {
-  transform: translateY(-4px);
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.7), 0 0 35px rgba(99, 102, 241, 0.6);
 }
 
 .nfc-chip {
@@ -259,22 +333,23 @@ body {
   height: 30px;
   background: linear-gradient(135deg, #fef08a 0%, #ca8a04 100%);
   border-radius: 5px;
-  box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.3), 0 0 10px rgba(254, 240, 138, 0.4);
 }
 
+/* Pulse Dot Lights */
 .pulse-dot {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   display: inline-block;
 }
 
 .pulse-online {
   background-color: #38bdf8;
-  box-shadow: 0 0 8px rgba(56, 189, 248, 0.8);
+  box-shadow: 0 0 10px #38bdf8, 0 0 18px #38bdf8;
 }
 
 .pulse-offline {
   background-color: #f59e0b;
-  box-shadow: 0 0 8px rgba(245, 158, 11, 0.8);
+  box-shadow: 0 0 10px #f59e0b, 0 0 18px #f59e0b;
 }

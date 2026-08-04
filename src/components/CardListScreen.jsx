@@ -34,10 +34,11 @@ export default function CardListScreen({ cards, setCards, onNavigateToAdd, onSim
 
   return (
     <div>
-      {/* Metric Summary Cards */}
+      {/* Glowing Info Metric Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '20px' }}>
-        <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ padding: '10px', background: 'rgba(99, 102, 241, 0.2)', color: '#a5b4fc', borderRadius: '10px' }}>
+        {/* Total Cards Glow Card */}
+        <div className="glass-panel glow-card-indigo" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ padding: '10px', background: 'rgba(99, 102, 241, 0.2)', color: '#818cf8', borderRadius: '10px', boxShadow: '0 0 10px rgba(99, 102, 241, 0.3)' }}>
             <CreditCard size={22} />
           </div>
           <div>
@@ -46,23 +47,25 @@ export default function CardListScreen({ cards, setCards, onNavigateToAdd, onSim
           </div>
         </div>
 
-        <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ padding: '10px', background: 'rgba(16, 185, 129, 0.2)', color: '#6ee7b7', borderRadius: '10px' }}>
+        {/* Active Cards Glow Card */}
+        <div className="glass-panel glow-card-emerald" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ padding: '10px', background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', borderRadius: '10px', boxShadow: '0 0 10px rgba(16, 185, 129, 0.3)' }}>
             <UserCheck size={22} />
           </div>
           <div>
             <div style={{ fontSize: '0.78rem', color: '#cbd5e1', fontWeight: 600 }}>Aktif Kartlar</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#6ee7b7' }}>{activeCount}</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#34d399' }}>{activeCount}</div>
           </div>
         </div>
 
-        <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ padding: '10px', background: 'rgba(244, 63, 94, 0.2)', color: '#fca5a5', borderRadius: '10px' }}>
+        {/* Blocked Cards Glow Card */}
+        <div className="glass-panel glow-card-rose" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ padding: '10px', background: 'rgba(244, 63, 94, 0.2)', color: '#fb7185', borderRadius: '10px', boxShadow: '0 0 10px rgba(244, 63, 94, 0.3)' }}>
             <ShieldAlert size={22} />
           </div>
           <div>
             <div style={{ fontSize: '0.78rem', color: '#cbd5e1', fontWeight: 600 }}>Engelli Kartlar</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fca5a5' }}>{blockedCount}</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fb7185' }}>{blockedCount}</div>
           </div>
         </div>
       </div>
@@ -122,7 +125,7 @@ export default function CardListScreen({ cards, setCards, onNavigateToAdd, onSim
                 filteredCards.map(card => (
                   <tr key={card.id}>
                     <td>
-                      <span className="form-input-mono" style={{ padding: '3px 8px', background: '#1e293b', color: '#a5b4fc', borderRadius: '4px', fontSize: '0.82rem', fontWeight: 600 }}>
+                      <span className="form-input-mono" style={{ padding: '3px 8px', background: '#1e293b', color: '#818cf8', borderRadius: '4px', fontSize: '0.82rem', fontWeight: 600, border: '1px solid rgba(99,102,241,0.3)', boxShadow: '0 0 6px rgba(99,102,241,0.2)' }}>
                         {card.uid}
                       </span>
                     </td>
