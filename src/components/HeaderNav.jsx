@@ -1,5 +1,5 @@
 import React from 'react';
-import { CreditCard, UserPlus, FileText, Wifi, WifiOff, Cpu, HardDrive } from 'lucide-react';
+import { CreditCard, UserPlus, FileText, Wifi, WifiOff, Cpu } from 'lucide-react';
 
 export default function HeaderNav({ activeTab, setActiveTab, esp32Status, toggleESP32Online }) {
   const steps = [
@@ -13,14 +13,14 @@ export default function HeaderNav({ activeTab, setActiveTab, esp32Status, toggle
       {/* Header Top Bar */}
       <div className="glass-panel" style={{ padding: '16px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ padding: '10px', background: 'linear-gradient(135deg, #6366f1 0%, #38bdf8 100%)', borderRadius: '10px', color: '#ffffff', display: 'flex' }}>
+          <div style={{ padding: '10px', background: '#6366f1', borderRadius: '10px', color: '#ffffff', display: 'flex' }}>
             <Cpu size={22} />
           </div>
           <div>
-            <h1 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc' }}>
+            <h1 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#ffffff' }}>
               ESP32 Akıllı Kartlı Geçiş Kontrol Sistemi
             </h1>
-            <p style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+            <p style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>
               W5500 Ethernet • MFRC522 RFID • LittleFS Offline Desteği
             </p>
           </div>
@@ -28,9 +28,9 @@ export default function HeaderNav({ activeTab, setActiveTab, esp32Status, toggle
 
         {/* ESP32 Status Badge & Online Switch */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: '#0f172a', border: '1px solid #334155', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: '#1e293b', border: '1px solid #475569', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600 }}>
             <span className={esp32Status.isOnline ? "pulse-dot pulse-online" : "pulse-dot pulse-offline"}></span>
-            <span style={{ color: esp32Status.isOnline ? '#38bdf8' : '#fbbf24' }}>
+            <span style={{ color: esp32Status.isOnline ? '#38bdf8' : '#f59e0b' }}>
               {esp32Status.isOnline ? 'ESP32 Online (API)' : 'ESP32 Offline (LittleFS)'}
             </span>
           </div>
@@ -41,7 +41,7 @@ export default function HeaderNav({ activeTab, setActiveTab, esp32Status, toggle
             style={{ fontSize: '0.78rem' }}
           >
             {esp32Status.isOnline ? (
-              <> <WifiOff size={14} color="#fbbf24" /> İnterneti Kes (Offline Mod) </>
+              <> <WifiOff size={14} color="#f59e0b" /> İnterneti Kes (Offline Mod) </>
             ) : (
               <> <Wifi size={14} /> İnterneti Bağla (Online Mod) </>
             )}
@@ -51,7 +51,7 @@ export default function HeaderNav({ activeTab, setActiveTab, esp32Status, toggle
 
       {/* Simplified 3-Step Navigation Bar */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
-        {steps.map((step, idx) => {
+        {steps.map((step) => {
           const Icon = step.icon;
           const isActive = activeTab === step.id;
           return (
@@ -64,8 +64,8 @@ export default function HeaderNav({ activeTab, setActiveTab, esp32Status, toggle
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                border: isActive ? '2px solid #6366f1' : '1px solid #334155',
-                background: isActive ? '#1e293b' : '#0f172a',
+                border: isActive ? '2px solid #6366f1' : '1px solid #475569',
+                background: isActive ? '#334155' : '#1e293b',
                 boxShadow: isActive ? '0 4px 16px rgba(99, 102, 241, 0.25)' : 'none',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease'
@@ -75,17 +75,17 @@ export default function HeaderNav({ activeTab, setActiveTab, esp32Status, toggle
                 <div style={{
                   padding: '8px',
                   borderRadius: '8px',
-                  background: isActive ? '#6366f1' : '#334155',
-                  color: isActive ? '#ffffff' : '#94a3b8',
+                  background: isActive ? '#6366f1' : '#475569',
+                  color: isActive ? '#ffffff' : '#cbd5e1',
                   display: 'flex'
                 }}>
                   <Icon size={18} />
                 </div>
                 <div style={{ textAlign: 'left' }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: isActive ? '#ffffff' : '#cbd5e1' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: isActive ? '#ffffff' : '#e2e8f0' }}>
                     {step.label}
                   </div>
-                  <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#cbd5e1' }}>
                     {step.countInfo}
                   </div>
                 </div>

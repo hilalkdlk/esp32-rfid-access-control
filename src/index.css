@@ -1,29 +1,29 @@
-/* Balanced Slate Luxury Theme - ESP32 Access Control Admin */
+/* Medium Slate Balanced Theme - ESP32 Access Control Admin */
 :root {
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
-  /* Mid-Tone Dark Slate Color Palette */
-  --bg-primary: #0f172a;       /* Slate 900 */
-  --bg-secondary: #1e293b;     /* Slate 800 */
-  --bg-card: #1e293b;          /* Card Background */
-  --bg-card-hover: #334155;    /* Slate 700 */
-  --bg-glass: rgba(30, 41, 59, 0.8);
-  --border-glass: #334155;     /* Slate 700 border */
-  --border-active: #6366f1;
+  /* Perfect Medium Slate Palette (Koyuya Yakın Dengeli Orta Ton) */
+  --bg-primary: #1e293b;       /* Slate 800 - Orta Koyu Zemin */
+  --bg-secondary: #334155;     /* Slate 700 - Kart Zeminleri */
+  --bg-card: #334155;          /* Kart ve Panel Rengi */
+  --bg-card-hover: #475569;    /* Slate 600 - Üzerine Gelince */
+  --bg-glass: rgba(51, 65, 85, 0.9);
+  --border-glass: #475569;     /* Çerçeve Rengi */
+  --border-active: #818cf8;
 
-  --accent-primary: #6366f1;   /* Indigo */
+  --accent-primary: #6366f1;   /* Canlı Indigo */
   --accent-primary-hover: #4f46e5;
-  --accent-secondary: #38bdf8; /* Sky Cyan */
-  --accent-success: #10b981;   /* Emerald */
-  --accent-danger: #f43f5e;    /* Rose Red */
-  --accent-warning: #f59e0b;   /* Amber */
+  --accent-secondary: #38bdf8; /* Canlı Cyan */
+  --accent-success: #10b981;   /* Emerald Yeşil */
+  --accent-danger: #f43f5e;    /* Rose Kırmızı */
+  --accent-warning: #f59e0b;   /* Amber Turuncu */
 
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --text-light: #cbd5e1;
+  --text-main: #ffffff;
+  --text-muted: #cbd5e1;
+  --text-light: #e2e8f0;
 
-  --shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+  --shadow-card: 0 8px 20px -4px rgba(0, 0, 0, 0.2);
   --radius-lg: 14px;
   --radius-md: 10px;
   --radius-sm: 8px;
@@ -54,7 +54,7 @@ body {
 }
 
 .glass-panel:hover {
-  border-color: #475569;
+  border-color: #64748b;
 }
 
 /* Buttons */
@@ -76,30 +76,28 @@ body {
 .btn-primary {
   background: var(--accent-primary);
   color: #ffffff;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
 }
 
 .btn-primary:hover {
   background: var(--accent-primary-hover);
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
 }
 
 .btn-secondary {
-  background: #334155;
-  color: #f8fafc;
-  border: 1px solid #475569;
+  background: #475569;
+  color: #ffffff;
+  border: 1px solid #64748b;
 }
 
 .btn-secondary:hover {
-  background: #475569;
-  color: #ffffff;
+  background: #64748b;
 }
 
 .btn-success {
   background: var(--accent-success);
   color: white;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
 }
 
 .btn-success:hover {
@@ -107,14 +105,13 @@ body {
 }
 
 .btn-danger {
-  background: rgba(244, 63, 94, 0.15);
-  color: #fb7185;
-  border: 1px solid rgba(244, 63, 94, 0.3);
+  background: rgba(244, 63, 94, 0.2);
+  color: #fecdd3;
+  border: 1px solid rgba(244, 63, 94, 0.4);
 }
 
 .btn-danger:hover {
-  background: rgba(244, 63, 94, 0.25);
-  border-color: #f43f5e;
+  background: rgba(244, 63, 94, 0.35);
 }
 
 .btn-sm {
@@ -134,33 +131,33 @@ body {
 }
 
 .badge-active {
-  background: rgba(16, 185, 129, 0.15);
-  color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.4);
 }
 
 .badge-passive {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.2);
+  color: #fde047;
+  border: 1px solid rgba(245, 158, 11, 0.4);
 }
 
 .badge-blocked {
-  background: rgba(244, 63, 94, 0.15);
-  color: #f87171;
-  border: 1px solid rgba(244, 63, 94, 0.3);
+  background: rgba(244, 63, 94, 0.2);
+  color: #fca5a5;
+  border: 1px solid rgba(244, 63, 94, 0.4);
 }
 
 .badge-online {
-  background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.3);
+  background: rgba(56, 189, 248, 0.2);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.4);
 }
 
 .badge-offline {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.2);
+  color: #fde047;
+  border: 1px solid rgba(245, 158, 11, 0.4);
 }
 
 /* Inputs & Form Controls */
@@ -179,8 +176,8 @@ body {
 .form-input, .form-select {
   width: 100%;
   padding: 10px 14px;
-  background: #0f172a;
-  border: 1px solid #334155;
+  background: #1e293b;
+  border: 1px solid #475569;
   border-radius: var(--radius-sm);
   color: var(--text-main);
   font-family: var(--font-family);
@@ -191,7 +188,8 @@ body {
 
 .form-input:focus, .form-select:focus {
   border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+  background: #1e293b;
 }
 
 .form-input-mono {
@@ -206,27 +204,27 @@ body {
 }
 
 .custom-table th {
-  background: #0f172a;
-  color: #94a3b8;
+  background: #1e293b;
+  color: #cbd5e1;
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   padding: 12px 16px;
   text-align: left;
-  border-bottom: 1px solid #334155;
+  border-bottom: 1px solid #475569;
 }
 
 .custom-table td {
   padding: 14px 16px;
   color: var(--text-main);
   font-size: 0.88rem;
-  border-bottom: 1px solid #334155;
+  border-bottom: 1px solid #475569;
   vertical-align: middle;
 }
 
 .custom-table tr:hover td {
-  background: #0f172a;
+  background: #1e293b;
 }
 
 /* Visual NFC Card Preview Component */
@@ -242,8 +240,8 @@ body {
   border-radius: 16px;
   padding: 22px;
   background: linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4338ca 100%);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -273,10 +271,10 @@ body {
 
 .pulse-online {
   background-color: #38bdf8;
-  box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.8);
 }
 
 .pulse-offline {
   background-color: #f59e0b;
-  box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.8);
 }

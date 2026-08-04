@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Filter, Plus, ShieldCheck, ShieldAlert, Trash2, Zap, CheckCircle2, UserCheck, CreditCard } from 'lucide-react';
+import { Search, Plus, ShieldCheck, ShieldAlert, Trash2, Zap, UserCheck, CreditCard } from 'lucide-react';
 
 export default function CardListScreen({ cards, setCards, onNavigateToAdd, onSimulateCard }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -37,32 +37,32 @@ export default function CardListScreen({ cards, setCards, onNavigateToAdd, onSim
       {/* Metric Summary Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '20px' }}>
         <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ padding: '10px', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', borderRadius: '10px' }}>
+          <div style={{ padding: '10px', background: 'rgba(99, 102, 241, 0.2)', color: '#a5b4fc', borderRadius: '10px' }}>
             <CreditCard size={22} />
           </div>
           <div>
-            <div style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600 }}>Toplam Kart</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f8fafc' }}>{cards.length}</div>
+            <div style={{ fontSize: '0.78rem', color: '#cbd5e1', fontWeight: 600 }}>Toplam Kart</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ffffff' }}>{cards.length}</div>
           </div>
         </div>
 
         <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ padding: '10px', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', borderRadius: '10px' }}>
+          <div style={{ padding: '10px', background: 'rgba(16, 185, 129, 0.2)', color: '#6ee7b7', borderRadius: '10px' }}>
             <UserCheck size={22} />
           </div>
           <div>
-            <div style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600 }}>Aktif Kartlar</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#34d399' }}>{activeCount}</div>
+            <div style={{ fontSize: '0.78rem', color: '#cbd5e1', fontWeight: 600 }}>Aktif Kartlar</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#6ee7b7' }}>{activeCount}</div>
           </div>
         </div>
 
         <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ padding: '10px', background: 'rgba(244, 63, 94, 0.15)', color: '#f87171', borderRadius: '10px' }}>
+          <div style={{ padding: '10px', background: 'rgba(244, 63, 94, 0.2)', color: '#fca5a5', borderRadius: '10px' }}>
             <ShieldAlert size={22} />
           </div>
           <div>
-            <div style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600 }}>Engelli Kartlar</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f87171' }}>{blockedCount}</div>
+            <div style={{ fontSize: '0.78rem', color: '#cbd5e1', fontWeight: 600 }}>Engelli Kartlar</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fca5a5' }}>{blockedCount}</div>
           </div>
         </div>
       </div>
@@ -73,7 +73,7 @@ export default function CardListScreen({ cards, setCards, onNavigateToAdd, onSim
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: '260px' }}>
             <div style={{ position: 'relative', width: '100%' }}>
-              <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+              <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#cbd5e1' }} />
               <input
                 type="text"
                 placeholder="Kart Sahibi veya UID ile ara..."
@@ -122,14 +122,14 @@ export default function CardListScreen({ cards, setCards, onNavigateToAdd, onSim
                 filteredCards.map(card => (
                   <tr key={card.id}>
                     <td>
-                      <span className="form-input-mono" style={{ padding: '3px 8px', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', borderRadius: '4px', fontSize: '0.82rem', fontWeight: 600 }}>
+                      <span className="form-input-mono" style={{ padding: '3px 8px', background: '#1e293b', color: '#a5b4fc', borderRadius: '4px', fontSize: '0.82rem', fontWeight: 600 }}>
                         {card.uid}
                       </span>
                     </td>
-                    <td style={{ fontWeight: 600, color: '#f8fafc' }}>{card.holderName}</td>
-                    <td style={{ color: '#94a3b8', fontSize: '0.82rem' }}>{card.employeeId}</td>
-                    <td style={{ fontSize: '0.82rem', color: '#cbd5e1' }}>{card.department}</td>
-                    <td style={{ fontSize: '0.82rem', color: '#cbd5e1' }}>{card.accessLevel}</td>
+                    <td style={{ fontWeight: 600, color: '#ffffff' }}>{card.holderName}</td>
+                    <td style={{ color: '#cbd5e1', fontSize: '0.82rem' }}>{card.employeeId}</td>
+                    <td style={{ fontSize: '0.82rem', color: '#e2e8f0' }}>{card.department}</td>
+                    <td style={{ fontSize: '0.82rem', color: '#e2e8f0' }}>{card.accessLevel}</td>
                     <td>
                       <span className={card.status === 'Aktif' ? 'badge badge-active' : 'badge badge-blocked'}>
                         {card.status === 'Aktif' ? <ShieldCheck size={12} /> : <ShieldAlert size={12} />}
@@ -163,7 +163,7 @@ export default function CardListScreen({ cards, setCards, onNavigateToAdd, onSim
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '30px', color: '#94a3b8' }}>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '30px', color: '#cbd5e1' }}>
                     Kayıtlı kart bulunamadı.
                   </td>
                 </tr>
