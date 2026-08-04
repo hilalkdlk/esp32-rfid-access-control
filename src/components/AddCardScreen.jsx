@@ -63,17 +63,17 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
       {/* Left Column: Form */}
       <div className="glass-panel" style={{ padding: '24px' }}>
         <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ padding: '8px', background: '#e0e7ff', color: '#4f46e5', borderRadius: '8px' }}>
+          <div style={{ padding: '8px', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', borderRadius: '8px' }}>
             <Sparkles size={20} />
           </div>
           <div>
-            <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>Yeni RFID Kart Kaydı</h2>
-            <p style={{ fontSize: '0.78rem', color: '#64748b' }}>ESP32 LittleFS cards.json yetkili listesine ekleyin.</p>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f8fafc' }}>Yeni RFID Kart Kaydı</h2>
+            <p style={{ fontSize: '0.78rem', color: '#94a3b8' }}>ESP32 LittleFS cards.json yetkili listesine ekleyin.</p>
           </div>
         </div>
 
         {errorMsg && (
-          <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', color: '#dc2626', fontSize: '0.82rem', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ padding: '10px 14px', background: 'rgba(244, 63, 94, 0.15)', border: '1px solid rgba(244, 63, 94, 0.3)', borderRadius: '6px', color: '#f87171', fontSize: '0.82rem', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <AlertCircle size={15} />
             <span>{errorMsg}</span>
           </div>
@@ -87,7 +87,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
               <button 
                 type="button" 
                 onClick={generateRandomUID}
-                style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}
+                style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}
               >
                 <RefreshCw size={12} /> Otomatik UID Üret
               </button>
@@ -171,7 +171,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
       {/* Right Column: Live Preview */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', marginBottom: '14px', alignSelf: 'flex-start' }}>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f8fafc', marginBottom: '14px', alignSelf: 'flex-start' }}>
             Canlı Dijital RFID Kart Önizlemesi
           </h3>
 
@@ -208,8 +208,8 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
 
         <div className="glass-panel" style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>Giriş-Çıkış Logları</div>
-            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Turnikede kart okutma simülatörü</div>
+            <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#f8fafc' }}>Giriş-Çıkış Logları</div>
+            <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Turnikede kart okutma simülatörü</div>
           </div>
           <button onClick={onNavigateToLogs} className="btn btn-secondary btn-sm">
             3. Adıma Git <ArrowRight size={14} />

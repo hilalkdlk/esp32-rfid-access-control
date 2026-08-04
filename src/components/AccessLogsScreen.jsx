@@ -58,15 +58,15 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Simulator Box */}
-      <div className="glass-panel" style={{ padding: '20px', background: '#f8fafc', border: '1px solid #cbd5e1' }}>
+      <div className="glass-panel" style={{ padding: '20px', background: '#1e293b', border: '1px solid #334155' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ padding: '8px', background: '#0284c7', color: '#ffffff', borderRadius: '8px', display: 'flex' }}>
+            <div style={{ padding: '8px', background: 'linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)', color: '#ffffff', borderRadius: '8px', display: 'flex' }}>
               <Zap size={20} />
             </div>
             <div>
-              <h2 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>Turnike Kart Okutma Simülatörü</h2>
-              <p style={{ fontSize: '0.78rem', color: '#64748b' }}>Sistemdeki kartlar ile geçiş yapmayı test edin.</p>
+              <h2 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#f8fafc' }}>Turnike Kart Okutma Simülatörü</h2>
+              <p style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Sistemdeki kartlar ile geçiş yapmayı test edin.</p>
             </div>
           </div>
 
@@ -127,12 +127,12 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
             marginTop: '14px',
             padding: '12px 16px',
             borderRadius: '8px',
-            background: simFeedback.isAuthorized ? '#ecfdf5' : '#fef2f2',
-            border: `1px solid ${simFeedback.isAuthorized ? '#a7f3d0' : '#fecaca'}`,
+            background: simFeedback.isAuthorized ? 'rgba(16, 185, 129, 0.15)' : 'rgba(244, 63, 94, 0.15)',
+            border: `1px solid ${simFeedback.isAuthorized ? 'rgba(16, 185, 129, 0.3)' : 'rgba(244, 63, 94, 0.3)'}`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            color: simFeedback.isAuthorized ? '#047857' : '#b91c1c'
+            color: simFeedback.isAuthorized ? '#34d399' : '#f87171'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               {simFeedback.isAuthorized ? <ShieldCheck size={22} /> : <ShieldAlert size={22} />}
@@ -140,7 +140,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
                 <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>
                   {simFeedback.isAuthorized ? '🔓 KAPIDA ERİŞİM İZNİ VERİLDİ (RÖLE AÇIK)' : '🔒 YETKİSİZ ERİŞİM! (RÖLE KAPALI)'}
                 </div>
-                <div style={{ fontSize: '0.78rem' }}>
+                <div style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>
                   {simFeedback.holderName} ({simFeedback.cardUid}) • {simFeedback.gate}
                 </div>
               </div>
@@ -155,7 +155,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
       {/* Access Logs Table */}
       <div className="glass-panel" style={{ padding: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>Geçiş Kayıtları Log Listesi</h3>
+          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#f8fafc' }}>Geçiş Kayıtları Log Listesi</h3>
           <div style={{ position: 'relative', width: '200px' }}>
             <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
             <input
@@ -186,17 +186,17 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
             <tbody>
               {filteredLogs.map(log => (
                 <tr key={log.id}>
-                  <td style={{ fontSize: '0.78rem', color: '#64748b', fontFamily: 'var(--font-mono)' }}>
+                  <td style={{ fontSize: '0.78rem', color: '#94a3b8', fontFamily: 'var(--font-mono)' }}>
                     {log.timestamp}
                   </td>
-                  <td style={{ fontWeight: 600 }}>{log.holderName}</td>
+                  <td style={{ fontWeight: 600, color: '#f8fafc' }}>{log.holderName}</td>
                   <td>
-                    <span className="form-input-mono" style={{ fontSize: '0.78rem', padding: '2px 6px', background: '#f1f5f9', borderRadius: '4px' }}>
+                    <span className="form-input-mono" style={{ fontSize: '0.78rem', padding: '2px 6px', background: '#0f172a', borderRadius: '4px', color: '#818cf8' }}>
                       {log.uid}
                     </span>
                   </td>
-                  <td style={{ fontSize: '0.82rem' }}>{log.gate}</td>
-                  <td style={{ fontSize: '0.78rem', fontWeight: 700, color: log.direction === 'Giriş' ? '#059669' : '#2563eb' }}>
+                  <td style={{ fontSize: '0.82rem', color: '#cbd5e1' }}>{log.gate}</td>
+                  <td style={{ fontSize: '0.78rem', fontWeight: 700, color: log.direction === 'Giriş' ? '#34d399' : '#60a5fa' }}>
                     {log.direction}
                   </td>
                   <td>
@@ -209,7 +209,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
                       {log.mode}
                     </span>
                   </td>
-                  <td style={{ fontSize: '0.78rem', color: log.syncedToFirestore ? '#059669' : '#d97706' }}>
+                  <td style={{ fontSize: '0.78rem', color: log.syncedToFirestore ? '#34d399' : '#fbbf24' }}>
                     {log.syncedToFirestore ? 'Tamamlandı' : 'pendingLogs.json'}
                   </td>
                 </tr>

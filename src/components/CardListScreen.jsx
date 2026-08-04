@@ -37,32 +37,32 @@ export default function CardListScreen({ cards, setCards, onNavigateToAdd, onSim
       {/* Metric Summary Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '20px' }}>
         <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ padding: '10px', background: '#e0e7ff', color: '#4f46e5', borderRadius: '10px' }}>
+          <div style={{ padding: '10px', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', borderRadius: '10px' }}>
             <CreditCard size={22} />
           </div>
           <div>
-            <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>Toplam Kart</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a' }}>{cards.length}</div>
+            <div style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600 }}>Toplam Kart</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f8fafc' }}>{cards.length}</div>
           </div>
         </div>
 
         <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ padding: '10px', background: '#d1fae5', color: '#059669', borderRadius: '10px' }}>
+          <div style={{ padding: '10px', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', borderRadius: '10px' }}>
             <UserCheck size={22} />
           </div>
           <div>
-            <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>Aktif Kartlar</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#059669' }}>{activeCount}</div>
+            <div style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600 }}>Aktif Kartlar</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#34d399' }}>{activeCount}</div>
           </div>
         </div>
 
         <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ padding: '10px', background: '#fee2e2', color: '#dc2626', borderRadius: '10px' }}>
+          <div style={{ padding: '10px', background: 'rgba(244, 63, 94, 0.15)', color: '#f87171', borderRadius: '10px' }}>
             <ShieldAlert size={22} />
           </div>
           <div>
-            <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>Engelli Kartlar</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#dc2626' }}>{blockedCount}</div>
+            <div style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600 }}>Engelli Kartlar</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f87171' }}>{blockedCount}</div>
           </div>
         </div>
       </div>
@@ -122,14 +122,14 @@ export default function CardListScreen({ cards, setCards, onNavigateToAdd, onSim
                 filteredCards.map(card => (
                   <tr key={card.id}>
                     <td>
-                      <span className="form-input-mono" style={{ padding: '3px 8px', background: '#f1f5f9', color: '#4338ca', borderRadius: '4px', fontSize: '0.82rem', fontWeight: 600 }}>
+                      <span className="form-input-mono" style={{ padding: '3px 8px', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', borderRadius: '4px', fontSize: '0.82rem', fontWeight: 600 }}>
                         {card.uid}
                       </span>
                     </td>
-                    <td style={{ fontWeight: 600 }}>{card.holderName}</td>
-                    <td style={{ color: '#64748b', fontSize: '0.82rem' }}>{card.employeeId}</td>
-                    <td style={{ fontSize: '0.82rem' }}>{card.department}</td>
-                    <td style={{ fontSize: '0.82rem', color: '#475569' }}>{card.accessLevel}</td>
+                    <td style={{ fontWeight: 600, color: '#f8fafc' }}>{card.holderName}</td>
+                    <td style={{ color: '#94a3b8', fontSize: '0.82rem' }}>{card.employeeId}</td>
+                    <td style={{ fontSize: '0.82rem', color: '#cbd5e1' }}>{card.department}</td>
+                    <td style={{ fontSize: '0.82rem', color: '#cbd5e1' }}>{card.accessLevel}</td>
                     <td>
                       <span className={card.status === 'Aktif' ? 'badge badge-active' : 'badge badge-blocked'}>
                         {card.status === 'Aktif' ? <ShieldCheck size={12} /> : <ShieldAlert size={12} />}
@@ -143,7 +143,7 @@ export default function CardListScreen({ cards, setCards, onNavigateToAdd, onSim
                           className="btn btn-secondary btn-sm"
                           title="Turnikede Okut"
                         >
-                          <Zap size={13} color="#0284c7" /> Simüle Et
+                          <Zap size={13} color="#38bdf8" /> Simüle Et
                         </button>
                         <button 
                           onClick={() => toggleCardStatus(card.id)}
