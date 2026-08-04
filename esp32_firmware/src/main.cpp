@@ -197,3 +197,21 @@ void syncPendingLogs() {
   if (!LittleFS.exists("/pendingLogs.json")) return;
   Serial.println("⚡ pendingLogs.json verileri API aracılığıyla Firestore'a aktarıldı ve dosya temizlendi!");
 }
+/*
+
+
+#include <Arduino.h>
+
+void setup() {
+    Serial.begin(115200);
+    delay(1000);
+    Serial.println("ESP32 test basladi.");
+}
+
+void loop() {
+    Serial.println("ESP32 calisiyor...");
+    delay(2000);
+}
+*/
+
+
