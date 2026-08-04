@@ -1,0 +1,16 @@
+{
+  "name": "esp32-rfid-backend-api",
+  "version": "1.0.0",
+  "description": "Node.js REST API for ESP32 Offline Supported RFID Access Control System",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5"
+  }
+}

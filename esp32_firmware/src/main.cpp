@@ -6,7 +6,7 @@
  * - Röle (Kapı Kilidi): Pin 26 (Active LOW / HIGH)
  * - Aktif Buzzer: Pin 27
  */
-
+/*
 #include <Arduino.h>
 #include <SPI.h>
 #include <MFRC522.h>
@@ -197,9 +197,14 @@ void syncPendingLogs() {
   if (!LittleFS.exists("/pendingLogs.json")) return;
   Serial.println("⚡ pendingLogs.json verileri API aracılığıyla Firestore'a aktarıldı ve dosya temizlendi!");
 }
-/*
+*/
 
 
+
+
+
+
+/*  esp32 kontrol kodu
 #include <Arduino.h>
 
 void setup() {
@@ -214,4 +219,35 @@ void loop() {
 }
 */
 
+/* röle testi kodu
+#include <Arduino.h>
 
+#define RELAY_PIN 26
+
+void setup()
+{
+    Serial.begin(115200);
+
+    pinMode(RELAY_PIN, OUTPUT);
+
+    // Röleyi başlangıçta kapalı tut
+    digitalWrite(RELAY_PIN, LOW);
+
+    Serial.println("Röle testi başladı.");
+}
+
+void loop()
+{
+    Serial.println("Röle AÇIK");
+
+    digitalWrite(RELAY_PIN, HIGH);
+
+    delay(2000);
+
+    Serial.println("Röle KAPALI");
+
+    digitalWrite(RELAY_PIN, LOW);
+
+    delay(2000);
+}
+    */
