@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// In-Memory Database (Adım 4 - Firestore entegrasyonu öncesi hızlı ve bağımsız test için)
+// In-Memory Veritabanı (Firestore bağlantısı öncesi hızlı ve bağımsız test imkanı)
 let cards = [
   {
     id: "card-1",
@@ -62,9 +62,9 @@ let logs = [
   }
 ];
 
-// --- API ENDPOINT'LERİ ---
+// --- REST API ENDPOINT'LERİ ---
 
-// 1. Health & Ping Test Endpoint (ESP32 Adım 3 Bağlantı Kontrolü)
+// 1. Health / Ping Test Endpoint (ESP32 Adım 3 İnternet Kontrolü)
 app.get('/api/health', (req, res) => {
   res.json({
     status: "ONLINE",
@@ -75,7 +75,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// 2. Yetkili Kart Listesi (ESP32 LittleFS cards.json senkronizasyonu için)
+// 2. Yetkili Kart Listesini Getir (ESP32 LittleFS cards.json senkronizasyonu için)
 app.get('/api/cards', (req, res) => {
   res.json({
     success: true,
@@ -84,28 +84,28 @@ app.get('/api/cards', (req, res) => {
   });
 });
 
-// 3. Yeni Kart Ekle (React Web Panelinden)
+// 3. Yeni Kart Ekle (React Yönetim Panelinden)
 app.post('/api/cards', (req, res) => {
   const { uid, holderName, employeeId, department, accessLevel, status } = req.body;
   
   if (!uid || !holderName) {
-    return res.status(400).json({ success: false, error: "UID ve Kart Sahibi zorunludur." });
+    return res.status(400).json({ success: false, error: "UID ve Kart Sahibi ad-soyad zorunludur." });
   }
 
   const newCard = {
     id: `card-${Date.now()}`,
     uid: uid.toUpperCase(),
     holderName,
-    employeeId: employeeId || "N/A",
+    employeeId: employeeId || "EMP-2026-000",
     department: department || "Genel",
-    accessLevel: accessLevel || "Standart",
+    accessLevel: accessLevel || "Standart Kapılar",
     status: status || "Aktif",
     issueDate: new Date().toISOString().split('T')[0],
     syncedToESP32: true
   };
 
   cards.unshift(newCard);
-  console.log(`[API] Yeni RFID Kart eklendi: ${newCard.holderName} (${newCard.uid})`);
+  console.log(`[API] Yeni RFID Kart Kaydedildi: ${newCard.holderName} (${newCard.uid})`);
   
   res.status(201).json({
     success: true,
@@ -125,7 +125,7 @@ app.put('/api/cards/:id/status', (req, res) => {
   }
 
   cards[cardIndex].status = status;
-  console.log(`[API] Kart durumu güncellendi: ${cards[cardIndex].holderName} -> ${status}`);
+  console.log(`[API] Kart Durumu Güncellendi: ${cards[cardIndex].holderName} -> ${status}`);
 
   res.json({
     success: true,
@@ -137,8 +137,8 @@ app.put('/api/cards/:id/status', (req, res) => {
 app.delete('/api/cards/:id', (req, res) => {
   const { id } = req.params;
   cards = cards.filter(c => c.id !== id);
-  console.log(`[API] Kart silindi: ID ${id}`);
-  res.json({ success: true, message: "Kart silindi." });
+  console.log(`[API] Kart Silindi: ID ${id}`);
+  res.json({ success: true, message: "Kart başarıyla silindi." });
 });
 
 // 6. Tüm Geçiş Loglarını Getir
@@ -150,7 +150,7 @@ app.get('/api/logs', (req, res) => {
   });
 });
 
-// 7. Yeni Geçiş Kaydı Ekle (ESP32 Canlı Geçiş veya Turnike Simülatörü)
+// 7. Canlı Geçiş Kaydı Ekle (ESP32 Kart Okutması veya Turnike Simülatörü)
 app.post('/api/logs', (req, res) => {
   const { uid, gate, direction } = req.body;
   
@@ -171,7 +171,7 @@ app.post('/api/logs', (req, res) => {
   };
 
   logs.unshift(newLog);
-  console.log(`[API LOG] Geçiş Kaydı: ${newLog.holderName} (${newLog.uid}) -> ${newLog.status}`);
+  console.log(`[API LOG] Kart Okutuldu: ${newLog.holderName} (${newLog.uid}) -> ${newLog.status}`);
 
   res.status(201).json({
     success: true,
@@ -182,10 +182,12 @@ app.post('/api/logs', (req, res) => {
   });
 });
 
-// 8. LittleFS pendingLogs.json Toplu Senkronizasyon (Internet Geldiğinde)
+// 8. LittleFS pendingLogs.json Toplu Senkronizasyon (İnternet Geri Geldiğinde)
 app.post('/api/logs/sync', (req, res) => {
   const { pendingLogs } = req.body;
+  let count = 0;
   if (Array.isArray(pendingLogs)) {
+    count = pendingLogs.length;
     pendingLogs.forEach(pLog => {
       logs.unshift({
         ...pLog,
@@ -193,20 +195,22 @@ app.post('/api/logs/sync', (req, res) => {
         syncedTime: new Date().toISOString()
       });
     });
-    console.log(`[API SYNC] LittleFS üzerinden ${pendingLogs.length} adet bekleyen log Firestore'a aktarıldı.`);
+    console.log(`[API SYNC] LittleFS üzerinden ${count} adet bekleyen log Firestore'a aktarıldı.`);
   }
 
   res.json({
     success: true,
-    syncedCount: pendingLogs ? pendingLogs.length : 0,
+    syncedCount: count,
     message: "LittleFS pendingLogs.json verileri başarıyla senkronize edildi."
   });
 });
 
-// Sunucuyu Başlat
+// Express Sunucusunu Çalıştır
 app.listen(PORT, () => {
-  console.log(`\n🚀 Node.js REST API Servisi Çalışıyor!`);
-  console.log(`📍 URL: http://localhost:${PORT}`);
-  console.log(`🔍 Health Test: http://localhost:${PORT}/api/health`);
-  console.log(`🎴 Kart Listesi: http://localhost:${PORT}/api/cards\n`);
+  console.log(`\n==================================================`);
+  console.log(`🚀 ESP32 Node.js REST API Servisi Başlatıldı!`);
+  console.log(`📍 Sunucu Adresi : http://localhost:${PORT}`);
+  console.log(`🔍 Health Test    : http://localhost:${PORT}/api/health`);
+  console.log(`🎴 Kart Listesi   : http://localhost:${PORT}/api/cards`);
+  console.log(`==================================================\n`);
 });
