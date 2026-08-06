@@ -251,3 +251,142 @@ void loop()
     delay(2000);
 }
     */
+
+
+
+/*rfid kart calısıyor mu deneme okuma kodu
+
+#include <Arduino.h>
+#include <SPI.h>
+#include <MFRC522.h>
+
+#define SS_PIN 5
+#define RST_PIN 22
+
+MFRC522 rfid(SS_PIN, RST_PIN);
+
+void setup()
+{
+    Serial.begin(115200);
+
+    SPI.begin(18, 19, 23, 5);
+
+    rfid.PCD_Init();
+
+    byte version = rfid.PCD_ReadRegister(MFRC522::VersionReg);
+
+    Serial.print("RC522 Version: 0x");
+    Serial.println(version, HEX);
+
+    Serial.println("RFID Kart Okuyucu Hazir.");
+    Serial.println("Karti okutun...");
+}
+
+void loop()
+{
+    if (!rfid.PICC_IsNewCardPresent())
+        return;
+
+    if (!rfid.PICC_ReadCardSerial())
+        return;
+
+    Serial.print("Kart UID: ");
+
+    for (byte i = 0; i < rfid.uid.size; i++)
+    {
+        if (rfid.uid.uidByte[i] < 0x10)
+            Serial.print("0");
+
+        Serial.print(rfid.uid.uidByte[i], HEX);
+        Serial.print(" ");
+    }
+
+    Serial.println();
+
+    rfid.PICC_HaltA();
+}
+*/
+
+/* rfid kart ile röle beraber calısıyor mu kontrolu
+#include <Arduino.h>
+#include <SPI.h>
+#include <MFRC522.h>
+
+#define SS_PIN 21
+#define RST_PIN 22
+#define RELAY_PIN 26
+
+MFRC522 rfid(SS_PIN, RST_PIN);
+
+String yetkiliKart = "11 B7 5A B7";
+
+void setup()
+{
+    Serial.begin(115200);
+
+    pinMode(RELAY_PIN, OUTPUT);
+    digitalWrite(RELAY_PIN, LOW);
+
+    SPI.begin(18, 19, 23, 5);
+    rfid.PCD_Init();
+
+    Serial.println("Sistem Hazir.");
+    Serial.println("Kart okutun...");
+}
+
+void loop()
+{
+    if (!rfid.PICC_IsNewCardPresent())
+        return;
+
+    if (!rfid.PICC_ReadCardSerial())
+        return;
+
+    String okunanKart = "";
+
+    for (byte i = 0; i < rfid.uid.size; i++)
+    {
+        if (rfid.uid.uidByte[i] < 0x10)
+            okunanKart += "0";
+
+        okunanKart += String(rfid.uid.uidByte[i], HEX);
+
+        if (i < rfid.uid.size - 1)
+            okunanKart += " ";
+    }
+
+    okunanKart.toUpperCase();
+
+    Serial.print("Okunan UID: ");
+    Serial.println(okunanKart);
+
+    if (okunanKart == yetkiliKart)
+    {
+        Serial.println("Yetkili kart. Role aciliyor.");
+
+        digitalWrite(RELAY_PIN, HIGH);
+        delay(2000);
+        digitalWrite(RELAY_PIN, LOW);
+    }
+    else
+    {
+        Serial.println("Yetkisiz kart.");
+    }
+
+    rfid.PICC_HaltA();
+    rfid.PCD_StopCrypto1();
+
+    delay(500);
+}
+*/
+
+
+
+
+
+
+
+
+
+
+
