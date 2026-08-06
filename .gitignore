@@ -9,8 +9,9 @@ pids
 *.seed
 *.pid.lock
 
-# Directory for instrumented code leveraged by Istanbul
-coverage
+# Secret Keys & Environment
+serviceAccountKey.json
+*.pem
 
 # Dependency directories
 node_modules/
@@ -18,9 +19,6 @@ node_modules/
 
 # Optional npm cache directory
 .npm
-
-# Output of 'npm pack'
-*.tgz
 
 # Vite build output
 dist/
