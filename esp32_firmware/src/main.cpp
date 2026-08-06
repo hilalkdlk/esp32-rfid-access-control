@@ -380,13 +380,61 @@ void loop()
 }
 */
 
+/*W5500 calısıyor mu testı
+#include <Arduino.h>
+#include <SPI.h>
+#include <Ethernet.h>
 
+#define W5500_CS 5
+#define RFID_CS 21
 
+byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
 
+void setup()
+{
+    Serial.begin(115200);
+    delay(1000);
 
+    Serial.println();
+    Serial.println("===== W5500 DHCP TEST =====");
 
+    // RFID'yi devre dışı bırak
+    pinMode(RFID_CS, OUTPUT);
+    digitalWrite(RFID_CS, HIGH);
 
+    // SPI başlat
+    SPI.begin(18, 19, 23);
 
+    Ethernet.init(W5500_CS);
 
+    Serial.println("DHCP'den IP alınıyor...");
 
+    if (Ethernet.begin(mac) == 0)
+    {
+        Serial.println("DHCP BASARISIZ!");
 
+        Serial.print("Hardware Status: ");
+        Serial.println(Ethernet.hardwareStatus());
+
+        Serial.print("Link Status: ");
+        Serial.println(Ethernet.linkStatus());
+    }
+    else
+    {
+        Serial.println("DHCP BASARILI!");
+
+        Serial.print("IP Adresi: ");
+        Serial.println(Ethernet.localIP());
+
+        Serial.print("Hardware Status: ");
+        Serial.println(Ethernet.hardwareStatus());
+
+        Serial.print("Link Status: ");
+        Serial.println(Ethernet.linkStatus());
+    }
+}
+
+void loop()
+{
+}
+*/
