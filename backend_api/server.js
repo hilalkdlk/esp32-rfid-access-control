@@ -10,7 +10,7 @@
 import express from 'express'; // Web sunucusu ve API rotaları için
 import cors from 'cors';       // Güvenli erişim izinleri için
 import dotenv from 'dotenv';   // Ortam değişkenleri okuyucu (.env)
-import { db } from './firebase.js'; // Firebase Cloud Firestore Veritabanı Sürücüsü
+import { admin, db } from './firebase.js'; // Firebase Admin ve Firestore Veritabanı Sürücüsü
 
 // 2. ORTAM DEĞİŞKENLERİNİ YÜKLE
 dotenv.config();
@@ -37,9 +37,8 @@ app.use(express.json());  // Gelen JSON verilerini otomatik nesneye dönüştür
  */
 app.get('/api/health', async (req, res) => {
   try {
-    // Firestore veritabanı bağlantı durumunu test et
     const cardsSnapshot = await db.collection('cards').get();
-    const logsSnapshot = await db.collection('access_logs').limit(1).get();
+    const logsSnapshot = await db.collection('access_logs').limit(100).get();
 
     res.json({
       status: "ONLINE",
@@ -65,7 +64,6 @@ app.get('/api/health', async (req, res) => {
  * ----------------------------------------------------------------------------
  * Yön: GET /api/cards
  * Amacı: Firestore "cards" koleksiyonundaki tüm kartları çekerek ESP32'ye döner.
- *        ESP32 bu verilerle dahili LittleFS "cards.json" dosyasını günceller.
  */
 app.get('/api/cards', async (req, res) => {
   try {
@@ -201,7 +199,6 @@ app.delete('/api/cards/:id', async (req, res) => {
  */
 app.get('/api/logs', async (req, res) => {
   try {
-    // Sınır Koruması: En son gerçekleşen 100 log kaydını getir
     const limitCount = parseInt(req.query.limit) || 100;
 
     const snapshot = await db.collection('access_logs')
@@ -248,7 +245,6 @@ app.post('/api/logs', async (req, res) => {
 
     const cleanUid = uid.toUpperCase().replace(/\s+/g, '');
     
-    // Firestore "cards" koleksiyonundan bu UID'ye sahip aktif kartı ara
     const cardsSnapshot = await db.collection('cards').get();
     let targetCard = null;
 
@@ -267,19 +263,17 @@ app.post('/api/logs', async (req, res) => {
       gate: gate || 'Ana Giriş Turnikesi',
       direction: direction || 'Giriş',
       status: isAuthorized ? 'Yetkili' : 'Yetkisiz',
-      relayTriggered: isAuthorized, // Yetkili ise Röle Tetiklenir
-      buzzerBeeps: isAuthorized ? 1 : 3, // Yetkili ise 1 Bip, Yetkisiz ise 3 Bip
+      relayTriggered: isAuthorized,
+      buzzerBeeps: isAuthorized ? 1 : 3,
       timestamp: new Date().toISOString(),
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       syncedToFirestore: true
     };
 
-    // Firestore "access_logs" koleksiyonuna kaydet
     const docRef = await db.collection('access_logs').add(newLogData);
 
     console.log(`[FIRESTORE CANLI LOG] Kart Okutuldu: ${newLogData.holderName} (${newLogData.uid}) -> ${newLogData.status}`);
 
-    // ESP32'ye Röle ve Buzzer komut cevabını geri dön
     res.status(201).json({
       success: true,
       authorized: isAuthorized,
@@ -310,7 +304,6 @@ app.post('/api/logs/sync', async (req, res) => {
       return res.json({ success: true, syncedCount: 0, message: "Senkronize edilecek bekleyen log bulunamadı." });
     }
 
-    // Firestore Toplu Yazma (Batch Write) İşlemi
     const batch = db.batch();
 
     pendingLogs.forEach(pLog => {
@@ -323,7 +316,6 @@ app.post('/api/logs/sync', async (req, res) => {
       });
     });
 
-    // Tüm bekleyen logları tek hamlede Firestore'a yaz
     await batch.commit();
 
     console.log(`[FIRESTORE SENKRON] LittleFS üzerinden ${pendingLogs.length} adet çevrimdışı log Firestore'a aktarıldı.`);
