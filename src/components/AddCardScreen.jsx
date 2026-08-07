@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import confetti from 'canvas-confetti';
-import { Cpu, RefreshCw, CheckCircle2, ArrowRight, Shield, Sparkles, User, AlertCircle, CheckSquare, Square } from 'lucide-react';
+import { RefreshCw, ArrowRight, Sparkles, AlertCircle, CheckCircle2, PlusCircle, ShieldCheck, DoorClosed } from 'lucide-react';
 import { DEPARTMENTS, GATES } from '../data/initialData';
 
 export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
@@ -91,22 +91,22 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
   };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
       {/* Left Column: Form */}
-      <div className="glass-panel" style={{ padding: '24px' }}>
-        <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ padding: '8px', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', borderRadius: '8px' }}>
-            <Sparkles size={20} />
+      <div className="glass-panel" style={{ padding: '24px', background: '#1e293b' }}>
+        <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ padding: '10px', background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', color: '#ffffff', borderRadius: '10px', display: 'flex' }}>
+            <Sparkles size={22} />
           </div>
           <div>
-            <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f8fafc' }}>Yeni RFID Kart Kaydı</h2>
-            <p style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Erişim yetkisi verilecek kapıları çoklu seçin.</p>
+            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc' }}>Yeni RFID Kart Tanımlama</h2>
+            <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Geçiş yetkilerini ve kapı erişimlerini özelleştirin.</p>
           </div>
         </div>
 
         {errorMsg && (
-          <div style={{ padding: '10px 14px', background: 'rgba(244, 63, 94, 0.15)', border: '1px solid rgba(244, 63, 94, 0.3)', borderRadius: '6px', color: '#f87171', fontSize: '0.82rem', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <AlertCircle size={15} />
+          <div style={{ padding: '12px 16px', background: 'rgba(244, 63, 94, 0.15)', border: '1px solid rgba(244, 63, 94, 0.3)', borderRadius: '8px', color: '#f87171', fontSize: '0.84rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AlertCircle size={16} />
             <span>{errorMsg}</span>
           </div>
         )}
@@ -114,14 +114,14 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
         <form onSubmit={handleSubmit}>
           {/* Card UID */}
           <div className="form-group">
-            <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>RFID Card UID</span>
+            <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>RFID Card UID Numarası</span>
               <button 
                 type="button" 
                 onClick={generateRandomUID}
-                style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}
+                style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}
               >
-                <RefreshCw size={12} /> Otomatik UID Üret
+                <RefreshCw size={13} /> Rastgele Üret
               </button>
             </label>
             <input
@@ -142,13 +142,13 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
               value={holderName}
               onChange={(e) => setHolderName(e.target.value)}
               className="form-input"
-              placeholder="Örn: Mehmet Yılmaz"
+              placeholder="Örn: Ahmet Yılmaz"
               required
             />
           </div>
 
           {/* Employee ID & Department */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div className="form-group">
               <label className="form-label">Sicil / T.C. No</label>
               <input
@@ -156,13 +156,13 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
                 value={employeeId}
                 onChange={(e) => setEmployeeId(e.target.value)}
                 className="form-input form-input-mono"
-                placeholder="Örn: EMP-2026-104"
+                placeholder="EMP-2026-001"
                 required
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">Birim</label>
+              <label className="form-label">Departman / Birim</label>
               <select
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
@@ -175,14 +175,22 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
             </div>
           </div>
 
-          {/* Multi-Select Gate Access Permissions */}
-          <div className="form-group" style={{ marginTop: '10px' }}>
-            <label className="form-label" style={{ marginBottom: '8px' }}>
-              İzin Verilen Geçiş Kapıları (Çoklu Seçim):
-            </label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: '#0f172a', padding: '12px', borderRadius: '8px', border: '1px solid #334155' }}>
+          {/* Luxury Multi-Select Gate Access Pills Matrix */}
+          <div className="form-group" style={{ marginTop: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <label className="form-label" style={{ margin: 0 }}>
+                Erişim İzni Verilen Kapılar (Çoklu Seçim):
+              </label>
+              <span style={{ fontSize: '0.72rem', color: '#a5b4fc', fontWeight: 600 }}>
+                {selectedGates.includes("Tüm Kapılar / Yönetici") ? "Tüm Kapılar Açık" : `${selectedGates.length} Kapı Seçili`}
+              </span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px' }}>
               {ALL_PERMISSIONS.map(gateName => {
                 const isSelected = selectedGates.includes(gateName);
+                const isAllGates = gateName === "Tüm Kapılar / Yönetici";
+
                 return (
                   <div
                     key={gateName}
@@ -190,18 +198,28 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '10px',
-                      padding: '8px 10px',
-                      borderRadius: '6px',
-                      background: isSelected ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
-                      border: `1px solid ${isSelected ? 'rgba(99, 102, 241, 0.4)' : 'transparent'}`,
+                      gap: '8px',
+                      padding: '9px 12px',
+                      borderRadius: '8px',
+                      background: isSelected 
+                        ? (isAllGates ? 'linear-gradient(135deg, #059669 0%, #047857 100%)' : 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)')
+                        : '#0f172a',
+                      border: `1px solid ${isSelected ? (isAllGates ? '#34d399' : '#818cf8') : '#334155'}`,
+                      color: isSelected ? '#ffffff' : '#94a3b8',
                       cursor: 'pointer',
-                      transition: 'all 0.2s ease',
+                      fontSize: '0.8rem',
+                      fontWeight: isSelected ? 700 : 500,
+                      boxShadow: isSelected ? (isAllGates ? '0 4px 12px rgba(16, 185, 129, 0.3)' : '0 4px 12px rgba(99, 102, 241, 0.3)') : 'none',
+                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                       userSelect: 'none'
                     }}
                   >
-                    {isSelected ? <CheckSquare size={16} color="#818cf8" /> : <Square size={16} color="#64748b" />}
-                    <span style={{ fontSize: '0.84rem', fontWeight: isSelected ? 700 : 500, color: isSelected ? '#f8fafc' : '#94a3b8' }}>
+                    {isSelected ? (
+                      <CheckCircle2 size={15} style={{ flexShrink: 0, color: isAllGates ? '#a7f3d0' : '#c7d2fe' }} />
+                    ) : (
+                      <PlusCircle size={15} style={{ flexShrink: 0, color: '#64748b' }} />
+                    )}
+                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {gateName}
                     </span>
                   </div>
@@ -214,7 +232,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
             type="submit"
             disabled={isSubmitting}
             className="btn btn-primary"
-            style={{ width: '100%', padding: '12px', marginTop: '14px' }}
+            style={{ width: '100%', padding: '12px', marginTop: '16px', fontSize: '0.92rem' }}
           >
             {isSubmitting ? 'Kaydediliyor...' : 'Kartı Kaydet & ESP32\'ye Gönder'}
           </button>
@@ -222,10 +240,10 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
       </div>
 
       {/* Right Column: Live Preview */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f8fafc', marginBottom: '14px', alignSelf: 'flex-start' }}>
-            Canlı Dijital RFID Kart Önizlemesi
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div className="glass-panel" style={{ padding: '24px', background: '#1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f8fafc', marginBottom: '16px', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ShieldCheck size={18} color="#818cf8" /> Canlı Dijital RFID Kart Önizlemesi
           </h3>
 
           <div className="nfc-card-container" style={{ width: '100%' }}>
@@ -250,11 +268,11 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
                   <div style={{ fontSize: '0.72rem', color: '#cbd5e1' }}>
                     {department} • {employeeId || 'ID NO'}
                   </div>
-                  <div style={{ fontSize: '0.68rem', color: '#818cf8', fontWeight: 700, marginTop: '2px' }}>
-                    İzin: {selectedGates.includes("Tüm Kapılar / Yönetici") ? "Tüm Kapılar" : `${selectedGates.length} Kapı`}
+                  <div style={{ fontSize: '0.7rem', color: '#a5b4fc', fontWeight: 700, marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <DoorClosed size={12} /> {selectedGates.includes("Tüm Kapılar / Yönetici") ? "Tüm Kapılar Açık" : `${selectedGates.length} Kapı İzinli`}
                   </div>
                 </div>
-                <span style={{ padding: '2px 8px', background: 'rgba(255,255,255,0.2)', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 700 }}>
+                <span style={{ padding: '3px 10px', background: 'rgba(255,255,255,0.2)', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700 }}>
                   {status}
                 </span>
               </div>
@@ -262,10 +280,10 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
           </div>
         </div>
 
-        <div className="glass-panel" style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="glass-panel" style={{ padding: '18px', background: '#1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#f8fafc' }}>Giriş-Çıkış Logları</div>
-            <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Turnikede kart okutma simülatörü</div>
+            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#f8fafc' }}>Giriş-Çıkış Logları</div>
+            <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Turnikede kart okutma simülatörü</div>
           </div>
           <button onClick={onNavigateToLogs} className="btn btn-secondary btn-sm">
             3. Adıma Git <ArrowRight size={14} />
