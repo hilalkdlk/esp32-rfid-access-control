@@ -19,56 +19,55 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
     const now = new Date();
     const timestamp = `${now.toISOString().split('T')[0]} ${now.toLocaleTimeString('tr-TR')}`;
 
-    // Send Live POST request to REST API & Firestore
-    let apiSuccess = false;
-    try {
-      const res = await fetch(`${API_BASE}/logs`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          uid: cardUid,
-          gate: selectedGate,
-          direction
-        })
-      });
-      const json = await res.json();
+    if (esp32Status.isOnline) {
+      // --- ONLINE MOD: CANLI REST API & FIRESTORE KANALI ---
+      try {
+        const res = await fetch(`${API_BASE}/logs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            uid: cardUid,
+            gate: selectedGate,
+            direction
+          })
+        });
+        const json = await res.json();
 
-      if (json.success && json.data) {
-        apiSuccess = true;
-        const newLog = {
-          id: json.data.id || `log-${Date.now()}`,
-          timestamp: json.data.timestamp || timestamp,
-          uid: cardUid,
-          holderName: json.data.holderName || holderName,
-          gate: selectedGate,
-          direction,
-          status: json.authorized ? 'Yetkili' : 'Yetkisiz',
-          mode: 'Online (API & Firestore)',
-          relayTriggered: json.relayTriggered,
-          buzzerBeeps: json.buzzerBeeps,
-          syncedToFirestore: true
-        };
-        setLogs(prev => [newLog, ...prev]);
+        if (json.success && json.data) {
+          const newOnlineLog = {
+            id: json.data.id || `log-${Date.now()}`,
+            timestamp: json.data.timestamp || timestamp,
+            uid: cardUid,
+            holderName: json.data.holderName || holderName,
+            gate: selectedGate,
+            direction,
+            status: json.authorized ? 'Yetkili' : 'Yetkisiz',
+            mode: 'Online (API & Firestore)',
+            relayTriggered: json.relayTriggered,
+            buzzerBeeps: json.buzzerBeeps,
+            syncedToFirestore: true
+          };
+          setLogs(prev => [newOnlineLog, ...prev]);
+        }
+      } catch (err) {
+        console.log('API Erişilemiyor, Çevrimdışı moda düşüldü.');
       }
-    } catch (err) {
-      console.log('API Offline - Using Local Log');
-    }
-
-    if (!apiSuccess) {
-      const fallbackLog = {
-        id: `log-${Date.now()}`,
+    } else {
+      // --- OFFLINE MOD: İNTERNET YOK, YALNIZCA LITTLEFS PENDINGLOGS.JSON DOSYASINA YAZ ---
+      const offlineLog = {
+        id: `offline-log-${Date.now()}`,
         timestamp,
         uid: cardUid,
         holderName,
         gate: selectedGate,
         direction,
         status: isAuthorized ? 'Yetkili' : 'Yetkisiz',
-        mode: esp32Status.isOnline ? 'Online (API)' : 'Offline (LittleFS)',
+        mode: 'Offline (LittleFS)',
         relayTriggered: isAuthorized,
         buzzerBeeps: isAuthorized ? 1 : 3,
-        syncedToFirestore: esp32Status.isOnline
+        syncedToFirestore: false // Firestore'a YAZILMADI, LittleFS belleğinde bekliyor!
       };
-      setLogs(prev => [fallbackLog, ...prev]);
+      setLogs(prev => [offlineLog, ...prev]);
     }
 
     setSimFeedback({
@@ -104,7 +103,12 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
             </div>
             <div>
               <h2 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#f8fafc' }}>Turnike Kart Okutma Simülatörü</h2>
-              <p style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Sistemdeki kartlar ile canlı geçiş yapmayı test edin.</p>
+              <p style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+                {esp32Status.isOnline 
+                  ? '🌐 Online Mod: İletilen kartlar anında canlı Firestore veritabanına işlenir.'
+                  : '🔌 Offline Mod: İnternet yok. İletilen kartlar LittleFS pendingLogs.json belgesine kaydedilir.'
+                }
+              </p>
             </div>
           </div>
 
@@ -114,7 +118,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
               className="btn btn-primary"
               style={{ background: '#d97706', fontSize: '0.8rem' }}
             >
-              <HardDrive size={15} /> {pendingCount} Bekleyen Logu Firestore'a Aktar
+              <HardDrive size={15} /> {pendingCount} Bekleyen Çevrimdışı Logu Firestore'a Aktar
             </button>
           )}
         </div>
@@ -129,7 +133,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
               className="form-select"
             >
               {cards.length === 0 ? (
-                <option value="">(Henüz Kart Yok - Kart Ekleyin)</option>
+                <option value="">(Henüz Kart Yok - Önce Kart Ekleyin)</option>
               ) : (
                 cards.map(c => (
                   <option key={c.id || c.uid} value={c.id || c.uid}>
@@ -183,7 +187,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
                   {simFeedback.isAuthorized ? '🔓 KAPIDA ERİŞİM İZNİ VERİLDİ (RÖLE AÇIK)' : '🔒 YETKİSİZ ERİŞİM! (RÖLE KAPALI)'}
                 </div>
                 <div style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>
-                  {simFeedback.holderName} ({simFeedback.cardUid}) • {simFeedback.gate}
+                  {simFeedback.holderName} ({simFeedback.cardUid}) • {simFeedback.gate} • {simFeedback.isOnline ? '🌐 Firestore\'a Yazıldı' : '📁 LittleFS pendingLogs.json Belleğine Yazıldı'}
                 </div>
               </div>
             </div>
@@ -222,7 +226,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
                 <th>Yön</th>
                 <th>Röle & Buzzer</th>
                 <th>Mod</th>
-                <th>Firestore</th>
+                <th>Firestore Durumu</th>
               </tr>
             </thead>
             <tbody>
@@ -258,8 +262,8 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
                         {log.mode || 'Online (API)'}
                       </span>
                     </td>
-                    <td style={{ fontSize: '0.78rem', color: log.syncedToFirestore ? '#34d399' : '#fbbf24' }}>
-                      {log.syncedToFirestore ? 'Tamamlandı' : 'pendingLogs.json'}
+                    <td style={{ fontSize: '0.78rem', fontWeight: 600, color: log.syncedToFirestore ? '#34d399' : '#fbbf24' }}>
+                      {log.syncedToFirestore ? '✅ Firestore\'a İşlendi' : '⚠️ pendingLogs.json (Bekliyor)'}
                     </td>
                   </tr>
                 ))
