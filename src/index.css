@@ -46,8 +46,8 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   line-height: 1.5;
-  /* Smooth Dark Ocean Gradient Transition Background */
-  background: linear-gradient(140deg, #060b19 0%, #0b1329 35%, #0f1c3f 70%, #033a5b 100%);
+  /* Reversed Direction Smooth Dark Ocean Gradient Background */
+  background: linear-gradient(320deg, #060b19 0%, #0b1329 35%, #0f1c3f 70%, #033a5b 100%);
   background-attachment: fixed;
 }
 
