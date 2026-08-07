@@ -55,16 +55,62 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
     setSelectedGates(updated);
   };
 
+  // Strict Form Validation Logic
+  const validateForm = () => {
+    // 1. RFID Card UID Validation (Format check: 4 bytes HEX "XX XX XX XX")
+    const cleanUid = uid.trim().toUpperCase();
+    const uidRegex = /^([0-9A-F]{2}\s){3}[0-9A-F]{2}$/;
+    if (!uidRegex.test(cleanUid)) {
+      setErrorMsg('RFID Kart UID numarası 4 baytlık HEX formatında olmalıdır. (Örn: A3 8F 42 C1)');
+      return false;
+    }
+
+    // 2. Holder Name Validation
+    const cleanName = holderName.trim();
+    if (!cleanName || cleanName.length < 3) {
+      setErrorMsg('Kart sahibinin adı ve soyadı en az 3 karakter olmalıdır.');
+      return false;
+    }
+    const nameRegex = /^[a-zA-ZğüşıöçĞÜŞİÖÇ\s]+$/;
+    if (!nameRegex.test(cleanName)) {
+      setErrorMsg('Kart sahibi adı ve soyadı sadece harflerden oluşmalıdır (sayı veya özel karakter içeremez).');
+      return false;
+    }
+
+    // 3. Student No vs Staff ID Validation
+    const cleanId = employeeId.trim();
+    if (cardType === 'Öğrenci') {
+      // Must be EXACTLY 10 digits
+      const digitsOnly = cleanId.replace(/\D/g, '');
+      if (digitsOnly.length !== 10 || cleanId.length !== 10) {
+        setErrorMsg('Öğrenci numarası TAM 10 HANELİ rakamdan oluşmalıdır. (Örn: 2026010402)');
+        return false;
+      }
+    } else {
+      // Staff Sicil / T.C. No validation
+      if (cleanId.length < 4) {
+        setErrorMsg('Personel Sicil / T.C. numarası en az 4 karakter olmalıdır.');
+        return false;
+      }
+    }
+
+    // 4. Gate selection check
+    if (selectedGates.length === 0) {
+      setErrorMsg('Lütfen en az 1 adet erişim kapısı izni seçiniz.');
+      return false;
+    }
+
+    return true;
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!holderName.trim()) {
-      setErrorMsg('Lütfen kart sahibinin adını ve soyadını giriniz.');
+    
+    // Execute Validation
+    if (!validateForm()) {
       return;
     }
-    if (!employeeId.trim()) {
-      setErrorMsg(cardType === 'Öğrenci' ? 'Lütfen öğrenci numarasını giriniz.' : 'Lütfen Sicil / T.C. No bilgisini giriniz.');
-      return;
-    }
+
     setErrorMsg('');
     setIsSubmitting(true);
 
@@ -76,10 +122,10 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
 
     const newCard = {
       id: `card-${Date.now()}`,
-      uid,
-      holderName,
-      cardType, // 'Öğrenci' veya 'Personel'
-      employeeId,
+      uid: uid.trim().toUpperCase(),
+      holderName: holderName.trim(),
+      cardType,
+      employeeId: employeeId.trim(),
       faculty: cardType === 'Öğrenci' ? faculty : 'N/A',
       department: departmentValue,
       accessLevel: formattedAccessLevel,
@@ -113,7 +159,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
           </div>
           <div>
             <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc' }}>Yeni RFID Kart Tanımlama</h2>
-            <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Öğrenci veya Personel kartı oluşturun.</p>
+            <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Gelişmiş veri doğrulama kontrollü kayıt formu.</p>
           </div>
         </div>
 
@@ -121,7 +167,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
           <button
             type="button"
-            onClick={() => setCardType('Öğrenci')}
+            onClick={() => { setCardType('Öğrenci'); setErrorMsg(''); }}
             style={{
               padding: '12px 14px',
               borderRadius: '10px',
@@ -145,7 +191,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
 
           <button
             type="button"
-            onClick={() => setCardType('Personel')}
+            onClick={() => { setCardType('Personel'); setErrorMsg(''); }}
             style={{
               padding: '12px 14px',
               borderRadius: '10px',
@@ -168,10 +214,11 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
           </button>
         </div>
 
+        {/* Validation Error Alert Box */}
         {errorMsg && (
-          <div style={{ padding: '12px 16px', background: 'rgba(244, 63, 94, 0.15)', border: '1px solid rgba(244, 63, 94, 0.3)', borderRadius: '8px', color: '#f87171', fontSize: '0.84rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <AlertCircle size={16} />
-            <span>{errorMsg}</span>
+          <div style={{ padding: '12px 16px', background: 'rgba(244, 63, 94, 0.15)', border: '1px solid rgba(244, 63, 94, 0.4)', borderRadius: '8px', color: '#fb7185', fontSize: '0.84rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px', boxShadow: '0 0 12px rgba(244, 63, 94, 0.2)' }}>
+            <AlertCircle size={18} style={{ flexShrink: 0 }} />
+            <span style={{ fontWeight: 600 }}>{errorMsg}</span>
           </div>
         )}
 
@@ -179,7 +226,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
           {/* Card UID */}
           <div className="form-group">
             <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>RFID Card UID Numarası</span>
+              <span>RFID Card UID Numarası (4 Bayt HEX)</span>
               <button 
                 type="button" 
                 onClick={generateRandomUID}
@@ -194,13 +241,14 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
               onChange={(e) => setUid(e.target.value.toUpperCase())}
               className="form-input form-input-mono"
               placeholder="Örn: A3 8F 42 C1"
+              maxLength={11}
               required
             />
           </div>
 
           {/* Holder Name */}
           <div className="form-group">
-            <label className="form-label">Kart Sahibi Ad Soyad</label>
+            <label className="form-label">Kart Sahibi Ad Soyad (Sadece Harf)</label>
             <input
               type="text"
               value={holderName}
@@ -217,15 +265,19 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
               {/* Student No & Faculty */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div className="form-group">
-                  <label className="form-label">Öğrenci Numarası</label>
+                  <label className="form-label">Öğrenci Numarası (Tam 10 Rakam)</label>
                   <input
                     type="text"
                     value={employeeId}
-                    onChange={(e) => setEmployeeId(e.target.value)}
+                    onChange={(e) => setEmployeeId(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     className="form-input form-input-mono"
                     placeholder="2026010402"
+                    maxLength={10}
                     required
                   />
+                  <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '4px' }}>
+                    {employeeId.length}/10 karakter
+                  </div>
                 </div>
 
                 <div className="form-group">
@@ -261,7 +313,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
               {/* Staff Employee ID & Department */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div className="form-group">
-                  <label className="form-label">Sicil / T.C. No</label>
+                  <label className="form-label">Sicil / T.C. No (Min. 4 Karakter)</label>
                   <input
                     type="text"
                     value={employeeId}
@@ -347,7 +399,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
             className="btn btn-primary"
             style={{ width: '100%', padding: '12px', marginTop: '16px', fontSize: '0.92rem' }}
           >
-            {isSubmitting ? 'Kaydediliyor...' : `${cardType} Kartını Kaydet & ESP32'ye Gönder`}
+            {isSubmitting ? 'Doğrulanıyor...' : `${cardType} Kartını Kaydet & ESP32'ye Gönder`}
           </button>
         </form>
       </div>
@@ -361,7 +413,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
 
           <div className="nfc-card-container" style={{ width: '100%' }}>
             <div className="nfc-card-preview" style={{
-              background: 'linear-gradient(135deg, #0f172a 0%, #0369a1 50%, #0284c7 100%)'
+              background: 'linear-gradient(135deg, #0b1329 0%, #0369a1 50%, #0284c7 100%)'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div className="nfc-chip"></div>
