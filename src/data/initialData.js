@@ -21,11 +21,11 @@ export const CARD_TYPES = [
 ];
 
 export const FACULTIES = [
-  "Mühendislik ve Doğa Bilimleri Fakültesi",
-  "Fen - Edebiyat Fakültesi",
+  "Mühendislik Fakültesi",
+  "Fen Edebiyat Fakültesi",
   "İktisadi ve İdari Bilimler Fakültesi",
   "Tıp Fakültesi",
-  "Mimarlık ve Tasarım Fakültesi",
+  "Mimarlık Fakültesi",
   "Hukuk Fakültesi",
   "Eğitim Fakültesi"
 ];

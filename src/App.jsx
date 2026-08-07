@@ -128,6 +128,49 @@ export default function App() {
     fetchLiveCards();
   };
 
+  // Toggle Card Status (Aktif / Engelli) with Live API & Firestore Update
+  const handleToggleCardStatus = async (cardId, currentStatus) => {
+    const nextStatus = currentStatus === 'Aktif' ? 'Engelli' : 'Aktif';
+    try {
+      const res = await fetch(`${API_BASE}/cards/${cardId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: nextStatus })
+      });
+      const json = await res.json();
+      if (json.success) {
+        setCards(prev => prev.map(c => c.id === cardId ? { ...c, status: nextStatus } : c));
+        showToast(`Kart durumu "${nextStatus}" olarak Firestore'da güncellendi!`, 'success');
+      } else {
+        setCards(prev => prev.map(c => c.id === cardId ? { ...c, status: nextStatus } : c));
+      }
+    } catch (err) {
+      setCards(prev => prev.map(c => c.id === cardId ? { ...c, status: nextStatus } : c));
+    }
+  };
+
+  // Delete Card with Live API & Firestore Removal
+  const handleDeleteCard = async (cardId) => {
+    if (!window.confirm('Bu kartı Firestore veritabanından ve sistemden silmek istediğinize emin misiniz?')) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/cards/${cardId}`, {
+        method: 'DELETE'
+      });
+      const json = await res.json();
+      if (json.success) {
+        setCards(prev => prev.filter(c => c.id !== cardId));
+        showToast('Kart veritabanından ve sistemden başarıyla silindi!', 'success');
+      } else {
+        setCards(prev => prev.filter(c => c.id !== cardId));
+      }
+    } catch (err) {
+      setCards(prev => prev.filter(c => c.id !== cardId));
+    }
+  };
+
   // Simulate card tap from List screen
   const handleSimulateFromList = (card) => {
     setSelectedCardForSim(card.id || card.uid);
@@ -200,7 +243,8 @@ export default function App() {
       {activeTab === 'list' && (
         <CardListScreen 
           cards={cards}
-          setCards={setCards}
+          onToggleCardStatus={handleToggleCardStatus}
+          onDeleteCard={handleDeleteCard}
           onNavigateToAdd={() => setActiveTab('add')}
           onSimulateCard={handleSimulateFromList}
           logsCount={logs.length}

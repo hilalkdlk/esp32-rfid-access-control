@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Plus, ShieldCheck, ShieldAlert, Trash2, Zap, UserCheck, CreditCard, GraduationCap, Briefcase } from 'lucide-react';
 
-export default function CardListScreen({ cards, setCards, onNavigateToAdd, onSimulateCard }) {
+export default function CardListScreen({ cards, onToggleCardStatus, onDeleteCard, onNavigateToAdd, onSimulateCard }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('ALL');
 
@@ -12,22 +12,6 @@ export default function CardListScreen({ cards, setCards, onNavigateToAdd, onSim
     const matchesType = selectedType === 'ALL' || card.cardType === selectedType;
     return matchesSearch && matchesType;
   });
-
-  const toggleCardStatus = (cardId) => {
-    setCards(prev => prev.map(c => {
-      if (c.id === cardId) {
-        const nextStatus = c.status === 'Aktif' ? 'Engelli' : 'Aktif';
-        return { ...c, status: nextStatus, syncedToESP32: true };
-      }
-      return c;
-    }));
-  };
-
-  const deleteCard = (cardId) => {
-    if (window.confirm('Bu kartı silmek istediğinize emin misiniz?')) {
-      setCards(prev => prev.filter(c => c.id !== cardId));
-    }
-  };
 
   const activeCount = cards.filter(c => c.status === 'Aktif').length;
   const blockedCount = cards.filter(c => c.status === 'Engelli').length;
@@ -40,13 +24,13 @@ export default function CardListScreen({ cards, setCards, onNavigateToAdd, onSim
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '20px' }}>
         {/* Total Cards Glow Card */}
         <div className="glass-panel glow-card-indigo" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ padding: '10px', background: 'rgba(99, 102, 241, 0.2)', color: '#818cf8', borderRadius: '10px', boxShadow: '0 0 10px rgba(99, 102, 241, 0.3)' }}>
+          <div style={{ padding: '10px', background: 'rgba(56, 189, 248, 0.2)', color: '#38bdf8', borderRadius: '10px', boxShadow: '0 0 10px rgba(56, 189, 248, 0.3)' }}>
             <CreditCard size={22} />
           </div>
           <div>
             <div style={{ fontSize: '0.78rem', color: '#cbd5e1', fontWeight: 600 }}>Toplam Kayıtlı Kart</div>
             <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ffffff' }}>
-              {cards.length} <span style={{ fontSize: '0.75rem', color: '#a5b4fc', fontWeight: 500 }}>({studentCount} Öğrenci / {staffCount} Personel)</span>
+              {cards.length} <span style={{ fontSize: '0.75rem', color: '#7dd3fc', fontWeight: 500 }}>({studentCount} Öğrenci / {staffCount} Personel)</span>
             </div>
           </div>
         </div>
@@ -128,7 +112,7 @@ export default function CardListScreen({ cards, setCards, onNavigateToAdd, onSim
                 filteredCards.map(card => (
                   <tr key={card.id}>
                     <td>
-                      <span className="form-input-mono" style={{ padding: '3px 8px', background: '#1e293b', color: '#818cf8', borderRadius: '4px', fontSize: '0.82rem', fontWeight: 600, border: '1px solid rgba(99,102,241,0.3)', boxShadow: '0 0 6px rgba(99,102,241,0.2)' }}>
+                      <span className="form-input-mono" style={{ padding: '3px 8px', background: '#0b1329', color: '#38bdf8', borderRadius: '4px', fontSize: '0.82rem', fontWeight: 600, border: '1px solid rgba(56,189,248,0.3)', boxShadow: '0 0 6px rgba(56,189,248,0.2)' }}>
                         {card.uid}
                       </span>
                     </td>
@@ -141,9 +125,9 @@ export default function CardListScreen({ cards, setCards, onNavigateToAdd, onSim
                         borderRadius: '6px',
                         fontSize: '0.75rem',
                         fontWeight: 700,
-                        background: card.cardType === 'Öğrenci' ? 'rgba(99, 102, 241, 0.2)' : 'rgba(56, 189, 248, 0.2)',
-                        color: card.cardType === 'Öğrenci' ? '#a5b4fc' : '#38bdf8',
-                        border: `1px solid ${card.cardType === 'Öğrenci' ? 'rgba(99, 102, 241, 0.4)' : 'rgba(56, 189, 248, 0.4)'}`
+                        background: card.cardType === 'Öğrenci' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(2, 132, 199, 0.2)',
+                        color: card.cardType === 'Öğrenci' ? '#7dd3fc' : '#38bdf8',
+                        border: `1px solid ${card.cardType === 'Öğrenci' ? 'rgba(56, 189, 248, 0.4)' : 'rgba(2, 132, 199, 0.4)'}`
                       }}>
                         {card.cardType === 'Öğrenci' ? <GraduationCap size={12} /> : <Briefcase size={12} />}
                         {card.cardType || 'Personel'}
@@ -161,7 +145,7 @@ export default function CardListScreen({ cards, setCards, onNavigateToAdd, onSim
                         card.department
                       )}
                     </td>
-                    <td style={{ fontSize: '0.82rem', color: '#a5b4fc', fontWeight: 600 }}>
+                    <td style={{ fontSize: '0.82rem', color: '#7dd3fc', fontWeight: 600 }}>
                       {card.accessLevel}
                     </td>
                     <td>
@@ -180,16 +164,17 @@ export default function CardListScreen({ cards, setCards, onNavigateToAdd, onSim
                           <Zap size={13} color="#38bdf8" /> Simüle Et
                         </button>
                         <button 
-                          onClick={() => toggleCardStatus(card.id)}
+                          onClick={() => onToggleCardStatus(card.id, card.status)}
                           className={`btn btn-sm ${card.status === 'Aktif' ? 'btn-secondary' : 'btn-primary'}`}
                         >
                           {card.status === 'Aktif' ? 'Engelle' : 'Aktif Yap'}
                         </button>
                         <button 
-                          onClick={() => deleteCard(card.id)}
+                          onClick={() => onDeleteCard(card.id)}
                           className="btn btn-danger btn-sm"
+                          title="Kartı Veritabanından Sil"
                         >
-                          <Trash2 size={13} />
+                          <Trash2 size={13} /> Sil
                         </button>
                       </div>
                     </td>
