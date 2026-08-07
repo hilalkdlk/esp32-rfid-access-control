@@ -23,7 +23,33 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
     const targetCard = cards.find(c => c.id === selectedCardId || c.uid === selectedCardId);
     const cardUid = targetCard ? targetCard.uid : (selectedCardId || 'FF FF FF FF');
     const holderName = targetCard ? targetCard.holderName : 'Tanımsız Kart';
-    const isAuthorized = targetCard && targetCard.status === 'Aktif';
+    
+    // 1. Kart Durumu Aktif mi?
+    const isActive = targetCard && targetCard.status === 'Aktif';
+
+    // 2. Kartın Seçili Kapıya Yetkisi Var mı? (Strict Gate Control)
+    let hasGatePermission = false;
+    if (isActive) {
+      const cardAccess = targetCard.accessLevel || targetCard.allowedGates;
+      if (
+        cardAccess === "Tüm Kapılar / Yönetici" ||
+        (Array.isArray(cardAccess) && (cardAccess.includes("Tüm Kapılar / Yönetici") || cardAccess.includes(selectedGate))) ||
+        (typeof cardAccess === 'string' && (cardAccess.includes("Tüm Kapılar") || cardAccess.includes(selectedGate)))
+      ) {
+        hasGatePermission = true;
+      }
+    }
+
+    const isAuthorized = isActive && hasGatePermission;
+
+    let statusText = 'Yetkili';
+    if (!targetCard) {
+      statusText = 'Tanımlanmamış Yabancı Kart';
+    } else if (!isActive) {
+      statusText = 'Kart Engelli (Pasif)';
+    } else if (!hasGatePermission) {
+      statusText = 'Kapı Yetkisi Yok (Yetkisiz Kapı)';
+    }
 
     const now = new Date();
     const timestamp = `${now.toISOString().split('T')[0]} ${now.toLocaleTimeString('tr-TR')}`;
@@ -50,7 +76,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
             holderName: json.data.holderName || holderName,
             gate: selectedGate,
             direction,
-            status: json.authorized ? 'Yetkili' : 'Yetkisiz',
+            status: json.data.status || (json.authorized ? 'Yetkili' : 'Kapı Yetkisi Yok'),
             mode: 'Online (API & Firestore)',
             relayTriggered: json.relayTriggered,
             buzzerBeeps: json.buzzerBeeps,
@@ -70,21 +96,24 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
         holderName,
         gate: selectedGate,
         direction,
-        status: isAuthorized ? 'Yetkili' : 'Yetkisiz',
+        status: statusText,
         mode: 'Offline (LittleFS)',
         relayTriggered: isAuthorized,
         buzzerBeeps: isAuthorized ? 1 : 3,
-        syncedToFirestore: false // Firestore'a YAZILMADI, LittleFS belleğinde bekliyor!
+        syncedToFirestore: false
       };
       setLogs(prev => [offlineLog, ...prev]);
     }
 
     setSimFeedback({
       isAuthorized,
+      hasGatePermission,
+      isActive,
       holderName,
       cardUid,
       direction,
       gate: selectedGate,
+      statusText,
       isOnline: esp32Status.isOnline,
       buzzerBeeps: isAuthorized ? 1 : 3
     });
@@ -114,7 +143,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
               <h2 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#f8fafc' }}>Turnike Kart Okutma Simülatörü</h2>
               <p style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
                 {esp32Status.isOnline 
-                  ? '🌐 Online Mod: İletilen kartlar anında canlı Firestore veritabanına işlenir.'
+                  ? '🌐 Online Mod: Kapı yetkisi uyan kartlara izin verilir, istekler Firestore\'a yazılır.'
                   : '🔌 Offline Mod: İnternet yok. İletilen kartlar LittleFS pendingLogs.json belgesine kaydedilir.'
                 }
               </p>
@@ -146,7 +175,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
               ) : (
                 cards.map(c => (
                   <option key={c.id || c.uid} value={c.id || c.uid}>
-                    {c.holderName} ({c.uid}) - [{c.status}]
+                    {c.holderName} ({c.uid}) - İzin: [{c.accessLevel || 'Belirtilmedi'}]
                   </option>
                 ))
               )}
@@ -154,7 +183,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
           </div>
 
           <div>
-            <label className="form-label">Giriş/Çıkış Kapısı</label>
+            <label className="form-label">Geçiş Yapılacak Kapı</label>
             <select
               value={selectedGate}
               onChange={(e) => setSelectedGate(e.target.value)}
@@ -193,10 +222,13 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
               {simFeedback.isAuthorized ? <ShieldCheck size={22} /> : <ShieldAlert size={22} />}
               <div>
                 <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>
-                  {simFeedback.isAuthorized ? '🔓 KAPIDA ERİŞİM İZNİ VERİLDİ (RÖLE AÇIK)' : '🔒 YETKİSİZ ERİŞİM! (RÖLE KAPALI)'}
+                  {simFeedback.isAuthorized 
+                    ? '🔓 KAPIDA ERİŞİM İZNİ VERİLDİ (RÖLE AÇIK)' 
+                    : `🔒 YETKİSİZ ERİŞİM! (${simFeedback.statusText || 'RÖLE KAPALI'})`
+                  }
                 </div>
                 <div style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>
-                  {simFeedback.holderName} ({simFeedback.cardUid}) • {simFeedback.gate} • {simFeedback.isOnline ? '🌐 Firestore\'a Yazıldı' : '📁 LittleFS pendingLogs.json Belleğine Yazıldı'}
+                  {simFeedback.holderName} ({simFeedback.cardUid}) • Denenen Kapı: {simFeedback.gate}
                 </div>
               </div>
             </div>
@@ -233,9 +265,9 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
                 <th>RFID UID</th>
                 <th>Kapı</th>
                 <th>Yön</th>
+                <th>Geçiş Durumu / Sonuç</th>
                 <th>Röle & Buzzer</th>
-                <th>Mod</th>
-                <th>Firestore Durumu</th>
+                <th>Firestore</th>
               </tr>
             </thead>
             <tbody>
@@ -262,17 +294,17 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
                       {log.direction}
                     </td>
                     <td>
+                      <span className={log.relayTriggered ? 'badge badge-online' : 'badge badge-offline'}>
+                        {log.status}
+                      </span>
+                    </td>
+                    <td>
                       <span className={log.relayTriggered ? 'badge badge-active' : 'badge badge-blocked'}>
                         {log.relayTriggered ? '🔓 Açık (1 Bip)' : '🔒 Kapalı (3 Bip)'}
                       </span>
                     </td>
-                    <td>
-                      <span className={log.mode && log.mode.includes('Online') ? 'badge badge-online' : 'badge badge-offline'}>
-                        {log.mode || 'Online (API)'}
-                      </span>
-                    </td>
                     <td style={{ fontSize: '0.78rem', fontWeight: 600, color: log.syncedToFirestore ? '#34d399' : '#fbbf24' }}>
-                      {log.syncedToFirestore ? '✅ Firestore\'a İşlendi' : '⚠️ pendingLogs.json (Bekliyor)'}
+                      {log.syncedToFirestore ? '✅ Firestore\'a İşlendi' : '⚠️ pendingLogs.json'}
                     </td>
                   </tr>
                 ))

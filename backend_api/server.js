@@ -32,8 +32,6 @@ app.use(express.json());  // Gelen JSON verilerini otomatik nesneye dönüştür
  * 1. PING & SAĞLIK KONTROLÜ ENDPOINT'İ
  * ----------------------------------------------------------------------------
  * Yön: GET /api/health
- * Amacı: ESP32 W5500 Ethernet çipinin internete çıkıp sunucuya ve Firestore'a
- *        ulaşıp ulaşamadığını test etmesi içindir.
  */
 app.get('/api/health', async (req, res) => {
   try {
@@ -63,7 +61,6 @@ app.get('/api/health', async (req, res) => {
  * 2. YETKİLİ KART LİSTESİ ENDPOINT'İ (ESP32 LITTLEFS CARDS.JSON İÇİN)
  * ----------------------------------------------------------------------------
  * Yön: GET /api/cards
- * Amacı: Firestore "cards" koleksiyonundaki tüm kartları çekerek ESP32'ye döner.
  */
 app.get('/api/cards', async (req, res) => {
   try {
@@ -93,12 +90,10 @@ app.get('/api/cards', async (req, res) => {
  * 3. YENİ KART EKLEME ENDPOINT'İ (REACT YÖNETİM PANELİNDEN)
  * ----------------------------------------------------------------------------
  * Yön: POST /api/cards
- * Amacı: React panelinden eklenen yeni RFID kartı canlı Firestore "cards"
- *        koleksiyonuna yeni bir belge (document) olarak kaydeder.
  */
 app.post('/api/cards', async (req, res) => {
   try {
-    const { uid, holderName, employeeId, department, accessLevel, status } = req.body;
+    const { uid, holderName, employeeId, department, accessLevel, allowedGates, status } = req.body;
     
     if (!uid || !holderName) {
       return res.status(400).json({ success: false, error: "UID ve Kart Sahibi ad-soyad zorunludur." });
@@ -109,14 +104,14 @@ app.post('/api/cards', async (req, res) => {
       holderName,
       employeeId: employeeId || "EMP-2026-000",
       department: department || "Genel",
-      accessLevel: accessLevel || "Standart Kapılar",
+      accessLevel: accessLevel || "Ana Giriş Turnikesi",
+      allowedGates: allowedGates || [accessLevel],
       status: status || "Aktif",
       issueDate: new Date().toISOString().split('T')[0],
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       syncedToESP32: true
     };
 
-    // Firestore "cards" koleksiyonuna kaydet
     const docRef = await db.collection('cards').add(newCardData);
     
     console.log(`[FIRESTORE] Yeni RFID Kart Eklendi: ${newCardData.holderName} (${newCardData.uid}) -> ID: ${docRef.id}`);
@@ -137,7 +132,6 @@ app.post('/api/cards', async (req, res) => {
  * 4. KART DURUMU GÜNCELLEME ENDPOINT'İ (AKTİF / ENGELLİ)
  * ----------------------------------------------------------------------------
  * Yön: PUT /api/cards/:id/status
- * Amacı: Firestore'daki bir kartın durumunu ("Aktif" veya "Engelli") günceller.
  */
 app.put('/api/cards/:id/status', async (req, res) => {
   try {
@@ -174,7 +168,6 @@ app.put('/api/cards/:id/status', async (req, res) => {
  * 5. KART SİLME ENDPOINT'İ
  * ----------------------------------------------------------------------------
  * Yön: DELETE /api/cards/:id
- * Amacı: Belirtilen kartı Firestore "cards" koleksiyonundan tamamen siler.
  */
 app.delete('/api/cards/:id', async (req, res) => {
   try {
@@ -191,11 +184,9 @@ app.delete('/api/cards/:id', async (req, res) => {
 
 /**
  * ----------------------------------------------------------------------------
- * 6. GEÇİŞ LOGLARINI GÖRÜNTÜLEME ENDPOINT'İ (LİMİT KORUMALI: EN SON 100 LOG)
+ * 6. GEÇİŞ LOGLARINI GÖRÜNTÜLEME ENDPOINT'İ (EN SON 100 LOG)
  * ----------------------------------------------------------------------------
  * Yön: GET /api/logs
- * Amacı: Performansı ve veritabanı kotasını korumak için Firestore "access_logs"
- *        koleksiyonundan EN SON gerçekleşen 100 log kaydını getirir.
  */
 app.get('/api/logs', async (req, res) => {
   try {
@@ -228,12 +219,9 @@ app.get('/api/logs', async (req, res) => {
 
 /**
  * ----------------------------------------------------------------------------
- * 7. CANLI KART GEÇİŞ KAYDI EKLEME ENDPOINT'İ (ESP32 CANLI KART OKUTMA)
+ * 7. CANLI KART GEÇİŞ KAYDI EKLEME (STRICT KAPI YETKİ KONTROLÜ İLE)
  * ----------------------------------------------------------------------------
  * Yön: POST /api/logs
- * Amacı: ESP32 üzerinde MFRC522 ile bir kart okutulduğunda (İnternet varken),
- *        ESP32 bu adrese HTTP POST atar. API kart yetkisini kontrol edip 
- *        Firestore "access_logs" koleksiyonuna yazar ve ESP32'ye Röle/Buzzer cevabı döner.
  */
 app.post('/api/logs', async (req, res) => {
   try {
@@ -244,6 +232,7 @@ app.post('/api/logs', async (req, res) => {
     }
 
     const cleanUid = uid.toUpperCase().replace(/\s+/g, '');
+    const currentGate = gate || 'Ana Giriş Turnikesi';
     
     const cardsSnapshot = await db.collection('cards').get();
     let targetCard = null;
@@ -255,16 +244,41 @@ app.post('/api/logs', async (req, res) => {
       }
     });
 
-    const isAuthorized = targetCard && targetCard.status === 'Aktif';
+    // 1. Kart Durumu Aktif mi?
+    const isActive = targetCard && targetCard.status === 'Aktif';
+
+    // 2. Kartın Bu Özel Kapıya Yetkisi Var mı? (Strict Gate Control)
+    let hasGatePermission = false;
+    if (isActive) {
+      const cardAccess = targetCard.accessLevel || targetCard.allowedGates;
+      if (
+        cardAccess === "Tüm Kapılar / Yönetici" ||
+        (Array.isArray(cardAccess) && (cardAccess.includes("Tüm Kapılar / Yönetici") || cardAccess.includes(currentGate))) ||
+        (typeof cardAccess === 'string' && (cardAccess.includes("Tüm Kapılar") || cardAccess.includes(currentGate)))
+      ) {
+        hasGatePermission = true;
+      }
+    }
+
+    const isAuthorized = isActive && hasGatePermission;
+
+    let statusText = 'Yetkili';
+    if (!targetCard) {
+      statusText = 'Tanımlanmamış Yabancı Kart';
+    } else if (!isActive) {
+      statusText = 'Kart Engelli (Pasif)';
+    } else if (!hasGatePermission) {
+      statusText = 'Kapı Yetkisi Yok (Yetkisiz Kapı)';
+    }
 
     const newLogData = {
       uid: uid.toUpperCase().trim(),
       holderName: targetCard ? targetCard.holderName : 'Tanımlanmamış Yabancı Kart',
-      gate: gate || 'Ana Giriş Turnikesi',
+      gate: currentGate,
       direction: direction || 'Giriş',
-      status: isAuthorized ? 'Yetkili' : 'Yetkisiz',
-      relayTriggered: isAuthorized,
-      buzzerBeeps: isAuthorized ? 1 : 3,
+      status: statusText,
+      relayTriggered: isAuthorized, // SADECE KART AKTİF VE KAPI YETKİSİ VARSA RÖLE AÇILIR!
+      buzzerBeeps: isAuthorized ? 1 : 3, // İzin varsa 1 Bip, İzin yoksa 3 Bip!
       timestamp: new Date().toISOString(),
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       syncedToFirestore: true
@@ -272,7 +286,7 @@ app.post('/api/logs', async (req, res) => {
 
     const docRef = await db.collection('access_logs').add(newLogData);
 
-    console.log(`[FIRESTORE CANLI LOG] Kart Okutuldu: ${newLogData.holderName} (${newLogData.uid}) -> ${newLogData.status}`);
+    console.log(`[FIRESTORE CANLI LOG] Kart Okutuldu: ${newLogData.holderName} (${newLogData.uid}) @ ${currentGate} -> Sonuç: ${newLogData.status}`);
 
     res.status(201).json({
       success: true,
@@ -289,12 +303,9 @@ app.post('/api/logs', async (req, res) => {
 
 /**
  * ----------------------------------------------------------------------------
- * 8. LITTLEFS PENDINGLOGS TOPLU SENKRONİZASYON ENDPOINT'İ (BATCH WRITE)
+ * 8. LITTLEFS PENDINGLOGS TOPLU SENKRONİZASYON ENDPOINT'İ
  * ----------------------------------------------------------------------------
  * Yön: POST /api/logs/sync
- * Amacı: İnternet kesintisi sonrasında internet geri geldiğinde ESP32'nin 
- *        LittleFS "pendingLogs.json" dosyasında biriken kayıtları Firestore'a 
- *        topluca (batch write) güvenle aktarır.
  */
 app.post('/api/logs/sync', async (req, res) => {
   try {

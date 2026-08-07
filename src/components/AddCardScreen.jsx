@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
 import confetti from 'canvas-confetti';
-import { Cpu, RefreshCw, CheckCircle2, ArrowRight, Shield, Sparkles, User, AlertCircle } from 'lucide-react';
-import { DEPARTMENTS, ACCESS_LEVELS } from '../data/initialData';
+import { Cpu, RefreshCw, CheckCircle2, ArrowRight, Shield, Sparkles, User, AlertCircle, CheckSquare, Square } from 'lucide-react';
+import { DEPARTMENTS, GATES } from '../data/initialData';
 
 export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
   const [uid, setUid] = useState('E4 9A 12 77');
   const [holderName, setHolderName] = useState('');
   const [employeeId, setEmployeeId] = useState('');
   const [department, setDepartment] = useState(DEPARTMENTS[0]);
-  const [accessLevel, setAccessLevel] = useState(ACCESS_LEVELS[0]);
+  
+  // Multi-select gates state
+  const ALL_PERMISSIONS = ["Tüm Kapılar / Yönetici", ...GATES];
+  const [selectedGates, setSelectedGates] = useState(["Ana Giriş Turnikesi"]);
+
   const [expiryDate, setExpiryDate] = useState('2026-12-31');
   const [status, setStatus] = useState('Aktif');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -17,6 +21,29 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
   const generateRandomUID = () => {
     const hex = () => Math.floor(Math.random() * 256).toString(16).toUpperCase().padStart(2, '0');
     setUid(`${hex()} ${hex()} ${hex()} ${hex()}`);
+  };
+
+  const toggleGatePermission = (gateName) => {
+    if (gateName === "Tüm Kapılar / Yönetici") {
+      if (selectedGates.includes("Tüm Kapılar / Yönetici")) {
+        setSelectedGates(["Ana Giriş Turnikesi"]);
+      } else {
+        setSelectedGates(["Tüm Kapılar / Yönetici"]);
+      }
+      return;
+    }
+
+    let updated = selectedGates.filter(g => g !== "Tüm Kapılar / Yönetici");
+    if (updated.includes(gateName)) {
+      updated = updated.filter(g => g !== gateName);
+    } else {
+      updated.push(gateName);
+    }
+
+    if (updated.length === 0) {
+      updated = ["Ana Giriş Turnikesi"];
+    }
+    setSelectedGates(updated);
   };
 
   const handleSubmit = (e) => {
@@ -32,13 +59,18 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
     setErrorMsg('');
     setIsSubmitting(true);
 
+    const formattedAccessLevel = selectedGates.includes("Tüm Kapılar / Yönetici")
+      ? "Tüm Kapılar / Yönetici"
+      : selectedGates.join(", ");
+
     const newCard = {
       id: `card-${Date.now()}`,
       uid,
       holderName,
       employeeId,
       department,
-      accessLevel,
+      accessLevel: formattedAccessLevel,
+      allowedGates: selectedGates,
       status,
       issueDate: new Date().toISOString().split('T')[0],
       expiryDate,
@@ -68,7 +100,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
           </div>
           <div>
             <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f8fafc' }}>Yeni RFID Kart Kaydı</h2>
-            <p style={{ fontSize: '0.78rem', color: '#94a3b8' }}>ESP32 LittleFS cards.json yetkili listesine ekleyin.</p>
+            <p style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Erişim yetkisi verilecek kapıları çoklu seçin.</p>
           </div>
         </div>
 
@@ -115,21 +147,20 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
             />
           </div>
 
-          {/* Employee ID */}
-          <div className="form-group">
-            <label className="form-label">Sicil / T.C. No</label>
-            <input
-              type="text"
-              value={employeeId}
-              onChange={(e) => setEmployeeId(e.target.value)}
-              className="form-input form-input-mono"
-              placeholder="Örn: EMP-2026-104"
-              required
-            />
-          </div>
-
-          {/* Department & Access Level */}
+          {/* Employee ID & Department */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div className="form-group">
+              <label className="form-label">Sicil / T.C. No</label>
+              <input
+                type="text"
+                value={employeeId}
+                onChange={(e) => setEmployeeId(e.target.value)}
+                className="form-input form-input-mono"
+                placeholder="Örn: EMP-2026-104"
+                required
+              />
+            </div>
+
             <div className="form-group">
               <label className="form-label">Birim</label>
               <select
@@ -142,18 +173,40 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
                 ))}
               </select>
             </div>
+          </div>
 
-            <div className="form-group">
-              <label className="form-label">Erişim Yetkisi</label>
-              <select
-                value={accessLevel}
-                onChange={(e) => setAccessLevel(e.target.value)}
-                className="form-select"
-              >
-                {ACCESS_LEVELS.map(level => (
-                  <option key={level} value={level}>{level}</option>
-                ))}
-              </select>
+          {/* Multi-Select Gate Access Permissions */}
+          <div className="form-group" style={{ marginTop: '10px' }}>
+            <label className="form-label" style={{ marginBottom: '8px' }}>
+              İzin Verilen Geçiş Kapıları (Çoklu Seçim):
+            </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: '#0f172a', padding: '12px', borderRadius: '8px', border: '1px solid #334155' }}>
+              {ALL_PERMISSIONS.map(gateName => {
+                const isSelected = selectedGates.includes(gateName);
+                return (
+                  <div
+                    key={gateName}
+                    onClick={() => toggleGatePermission(gateName)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      background: isSelected ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+                      border: `1px solid ${isSelected ? 'rgba(99, 102, 241, 0.4)' : 'transparent'}`,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      userSelect: 'none'
+                    }}
+                  >
+                    {isSelected ? <CheckSquare size={16} color="#818cf8" /> : <Square size={16} color="#64748b" />}
+                    <span style={{ fontSize: '0.84rem', fontWeight: isSelected ? 700 : 500, color: isSelected ? '#f8fafc' : '#94a3b8' }}>
+                      {gateName}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -161,7 +214,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
             type="submit"
             disabled={isSubmitting}
             className="btn btn-primary"
-            style={{ width: '100%', padding: '12px', marginTop: '10px' }}
+            style={{ width: '100%', padding: '12px', marginTop: '14px' }}
           >
             {isSubmitting ? 'Kaydediliyor...' : 'Kartı Kaydet & ESP32\'ye Gönder'}
           </button>
@@ -196,6 +249,9 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
                   </div>
                   <div style={{ fontSize: '0.72rem', color: '#cbd5e1' }}>
                     {department} • {employeeId || 'ID NO'}
+                  </div>
+                  <div style={{ fontSize: '0.68rem', color: '#818cf8', fontWeight: 700, marginTop: '2px' }}>
+                    İzin: {selectedGates.includes("Tüm Kapılar / Yönetici") ? "Tüm Kapılar" : `${selectedGates.length} Kapı`}
                   </div>
                 </div>
                 <span style={{ padding: '2px 8px', background: 'rgba(255,255,255,0.2)', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 700 }}>
