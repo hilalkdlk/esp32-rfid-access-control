@@ -4,7 +4,7 @@
   --font-mono: 'JetBrains Mono', monospace;
 
   /* Deep Midnight & Sky Cyan Palette */
-  --bg-primary: #0b1329;       /* Deepest Midnight 950 */
+  --bg-primary: #070d1e;       /* Deepest Midnight */
   --bg-secondary: #162038;     /* Slate Ocean 850 - Card Base */
   --bg-card: #162038;          /* Card Background */
   --bg-card-hover: #1e2d4d;    /* Hover State */
@@ -42,15 +42,12 @@
 
 body {
   font-family: var(--font-family);
-  background-color: var(--bg-primary);
   color: var(--text-main);
   min-height: 100vh;
   overflow-x: hidden;
   line-height: 1.5;
-  background-image: 
-    radial-gradient(circle at 15% 15%, rgba(56, 189, 248, 0.09) 0%, transparent 45%),
-    radial-gradient(circle at 85% 85%, rgba(2, 132, 199, 0.09) 0%, transparent 45%),
-    radial-gradient(circle at 50% 50%, rgba(11, 19, 41, 0.95) 0%, transparent 100%);
+  /* Smooth Dark Ocean Gradient Transition Background */
+  background: linear-gradient(140deg, #060b19 0%, #0b1329 35%, #0f1c3f 70%, #033a5b 100%);
   background-attachment: fixed;
 }
 
