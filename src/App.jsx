@@ -29,6 +29,14 @@ export default function App() {
     fetchLiveCards();
     fetchLiveLogs();
     checkApiHealth();
+
+    // Live Auto-Refresh Interval (Every 5 seconds, auto-sync new physical ESP32 & LittleFS logs!)
+    const autoRefreshInterval = setInterval(() => {
+      fetchLiveLogs();
+      fetchLiveCards();
+    }, 5000);
+
+    return () => clearInterval(autoRefreshInterval);
   }, []);
 
   // Fetch Cards from API & Firestore

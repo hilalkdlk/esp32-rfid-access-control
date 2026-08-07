@@ -21,7 +21,6 @@ export default function CardListScreen({ cards, onUpdateCard, onToggleCardStatus
 
   const filteredCards = cards.filter(card => {
     const matchesSearch = (card.holderName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          (card.uid || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                           (card.employeeId || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = selectedType === 'ALL' || card.cardType === selectedType;
     return matchesSearch && matchesType;
@@ -124,7 +123,7 @@ export default function CardListScreen({ cards, onUpdateCard, onToggleCardStatus
             <CreditCard size={24} />
           </div>
           <div>
-            <div style={{ fontSize: '0.8rem', color: '#cbd5e1', fontWeight: 600 }}>Toplam Kayıtlı Kart</div>
+            <div style={{ fontSize: '0.8rem', color: '#cbd5e1', fontWeight: 600 }}>Toplam Kayıtlı Kullanıcı</div>
             <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#ffffff', marginTop: '2px' }}>
               {cards.length} <span style={{ fontSize: '0.8rem', color: '#7dd3fc', fontWeight: 500 }}>({studentCount} Öğrenci / {staffCount} Personel)</span>
             </div>
@@ -137,7 +136,7 @@ export default function CardListScreen({ cards, onUpdateCard, onToggleCardStatus
             <UserCheck size={24} />
           </div>
           <div>
-            <div style={{ fontSize: '0.8rem', color: '#cbd5e1', fontWeight: 600 }}>Aktif Kartlar</div>
+            <div style={{ fontSize: '0.8rem', color: '#cbd5e1', fontWeight: 600 }}>Aktif Kullanıcılar</div>
             <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#34d399', marginTop: '2px' }}>{activeCount}</div>
           </div>
         </div>
@@ -148,7 +147,7 @@ export default function CardListScreen({ cards, onUpdateCard, onToggleCardStatus
             <ShieldAlert size={24} />
           </div>
           <div>
-            <div style={{ fontSize: '0.8rem', color: '#cbd5e1', fontWeight: 600 }}>Engelli Kartlar</div>
+            <div style={{ fontSize: '0.8rem', color: '#cbd5e1', fontWeight: 600 }}>Engelli Kullanıcılar</div>
             <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fb7185', marginTop: '2px' }}>{blockedCount}</div>
           </div>
         </div>
@@ -159,8 +158,8 @@ export default function CardListScreen({ cards, onUpdateCard, onToggleCardStatus
         {/* Header Title & Controls Bar */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
           <div>
-            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc' }}>Sistemdeki Kayıtlı RFID Kartlar</h2>
-            <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '2px' }}>Öğrenci ve personel kart yetkilerini yönetin ve düzenleyin.</p>
+            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc' }}>Sistemdeki Kayıtlı Kullanıcılar</h2>
+            <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '2px' }}>Kullanıcı isimlerine göre yetkileri yönetin ve düzenleyin.</p>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
@@ -168,7 +167,7 @@ export default function CardListScreen({ cards, onUpdateCard, onToggleCardStatus
               <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#cbd5e1' }} />
               <input
                 type="text"
-                placeholder="İsim, No veya UID Ara..."
+                placeholder="İsim veya No ile Ara..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="form-input"
@@ -188,18 +187,17 @@ export default function CardListScreen({ cards, onUpdateCard, onToggleCardStatus
             </select>
 
             <button onClick={onNavigateToAdd} className="btn btn-primary" style={{ padding: '9px 18px', fontSize: '0.88rem' }}>
-              <Plus size={16} /> Yeni Kart Ekle (Adım 2)
+              <Plus size={16} /> Yeni Kayıt Ekle (Adım 2)
             </button>
           </div>
         </div>
 
-        {/* Table - Natural Auto Width Flow Without Horizontal Scrollbar */}
+        {/* Table - Omit UID Column Completely */}
         <table className="custom-table" style={{ width: '100%' }}>
           <thead>
             <tr>
-              <th>RFID UID</th>
+              <th>Kart Sahibi Ad Soyad</th>
               <th>Tür</th>
-              <th>Kart Sahibi</th>
               <th>Öğrenci / Sicil No</th>
               <th>Fakülte / Birim & Bölüm</th>
               <th>İzinli Kapılar</th>
@@ -211,10 +209,8 @@ export default function CardListScreen({ cards, onUpdateCard, onToggleCardStatus
             {filteredCards.length > 0 ? (
               filteredCards.map(card => (
                 <tr key={card.id}>
-                  <td>
-                    <span className="form-input-mono" style={{ padding: '4px 10px', background: '#0b1329', color: '#38bdf8', borderRadius: '4px', fontSize: '0.84rem', fontWeight: 600, border: '1px solid rgba(56,189,248,0.3)', boxShadow: '0 0 6px rgba(56,189,248,0.2)' }}>
-                      {card.uid}
-                    </span>
+                  <td style={{ fontWeight: 700, color: '#ffffff', fontSize: '0.94rem' }}>
+                    {card.holderName}
                   </td>
                   <td>
                     <span style={{
@@ -233,7 +229,6 @@ export default function CardListScreen({ cards, onUpdateCard, onToggleCardStatus
                       {card.cardType || 'Personel'}
                     </span>
                   </td>
-                  <td style={{ fontWeight: 600, color: '#ffffff' }}>{card.holderName}</td>
                   <td style={{ color: '#cbd5e1', fontSize: '0.84rem', fontFamily: 'var(--font-mono)' }}>{card.employeeId}</td>
                   <td style={{ fontSize: '0.84rem', color: '#e2e8f0' }}>
                     {card.cardType === 'Öğrenci' && card.faculty && card.faculty !== 'N/A' ? (
@@ -259,7 +254,7 @@ export default function CardListScreen({ cards, onUpdateCard, onToggleCardStatus
                       <button 
                         onClick={() => openEditModal(card)}
                         className="btn btn-secondary btn-sm"
-                        title="Kart Bilgilerini Düzenle"
+                        title="Kullanıcı Bilgilerini Düzenle"
                         style={{ borderColor: '#38bdf8', color: '#38bdf8' }}
                       >
                         <Edit3 size={13} /> Düzenle
@@ -280,7 +275,7 @@ export default function CardListScreen({ cards, onUpdateCard, onToggleCardStatus
                       <button 
                         onClick={() => onDeleteCard(card.id)}
                         className="btn btn-danger btn-sm"
-                        title="Kartı Veritabanından Sil"
+                        title="Kullanıcıyı Sil"
                       >
                         <Trash2 size={13} />
                       </button>
@@ -290,8 +285,8 @@ export default function CardListScreen({ cards, onUpdateCard, onToggleCardStatus
               ))
             ) : (
               <tr>
-                <td colSpan="8" style={{ textAlign: 'center', padding: '30px', color: '#cbd5e1' }}>
-                  Kayıtlı kart bulunamadı.
+                <td colSpan="7" style={{ textAlign: 'center', padding: '30px', color: '#cbd5e1' }}>
+                  Kayıtlı kullanıcı bulunamadı.
                 </td>
               </tr>
             )}
@@ -330,7 +325,7 @@ export default function CardListScreen({ cards, onUpdateCard, onToggleCardStatus
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Edit3 size={20} color="#38bdf8" />
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc' }}>
-                  Kart Bilgilerini Güncelle ({editingCard.uid})
+                  Kullanıcı Bilgilerini Güncelle ({editingCard.holderName})
                 </h3>
               </div>
               <button 
@@ -388,7 +383,7 @@ export default function CardListScreen({ cards, onUpdateCard, onToggleCardStatus
 
               {/* Holder Name */}
               <div className="form-group">
-                <label className="form-label">Kart Sahibi Ad Soyad</label>
+                <label className="form-label">Kullanıcı Ad Soyad</label>
                 <input
                   type="text"
                   value={editHolderName}

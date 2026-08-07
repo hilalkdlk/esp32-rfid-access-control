@@ -41,7 +41,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
   const handleSimulateTap = async (direction) => {
     const targetCard = cards.find(c => c.id === selectedCardId || c.uid === selectedCardId);
     const cardUid = targetCard ? targetCard.uid : (selectedCardId || 'FF FF FF FF');
-    const holderName = targetCard ? targetCard.holderName : 'Tanımsız Kart';
+    const holderName = targetCard ? targetCard.holderName : 'Tanımlanmamış Yabancı Kullanıcı';
     const activeGate = selectedGate || GATES[0];
     
     // 1. Kart Durumu Aktif mi?
@@ -64,9 +64,9 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
 
     let statusText = 'Yetkili';
     if (!targetCard) {
-      statusText = 'Tanımlanmamış Yabancı Kart';
+      statusText = 'Tanımlanmamış Yabancı Kullanıcı';
     } else if (!isActive) {
-      statusText = 'Kart Engelli (Pasif)';
+      statusText = 'Kullanıcı Engelli (Pasif)';
     } else if (!hasGatePermission) {
       statusText = 'Kapı Yetkisi Yok (Yetkisiz Kapı)';
     }
@@ -92,7 +92,6 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
           const newOnlineLog = {
             id: json.data.id || `log-${Date.now()}`,
             timestamp: json.data.timestamp || timestamp,
-            uid: cardUid,
             holderName: json.data.holderName || holderName,
             gate: activeGate,
             direction,
@@ -112,7 +111,6 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
       const offlineLog = {
         id: `offline-log-${Date.now()}`,
         timestamp,
-        uid: cardUid,
         holderName,
         gate: activeGate,
         direction,
@@ -130,7 +128,6 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
       hasGatePermission,
       isActive,
       holderName,
-      cardUid,
       direction,
       gate: activeGate,
       statusText,
@@ -145,14 +142,13 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
 
   const filteredLogs = logs.filter(log =>
     (log.holderName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (log.uid || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (log.gate || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const pendingCount = logs.filter(l => !l.syncedToFirestore).length;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* Simulator Box */}
       <div className="glass-panel" style={{ padding: '20px', background: '#162038' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '18px' }}>
@@ -164,8 +160,8 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
               <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc' }}>Turnike Kart Okutma Simülatörü</h2>
               <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>
                 {esp32Status.isOnline 
-                  ? '🌐 Online Mod: Seçilen kapı izinlerine göre dinamik doğrulama yapılır, loglar Firestore\'a işlenir.'
-                  : '🔌 Offline Mod: İnternet yok. İletilen kartlar LittleFS pendingLogs.json belgesine kaydedilir.'
+                  ? '🌐 Online Mod: Seçilen kullanıcı yetkisine göre dinamik doğrulama yapılır, loglar Firestore\'a işlenir.'
+                  : '🔌 Offline Mod: İnternet yok. Geçiş yapan kullanıcılar LittleFS pendingLogs.json belgesine kaydedilir.'
                 }
               </p>
             </div>
@@ -182,21 +178,21 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
           )}
         </div>
 
-        {/* Controls */}
+        {/* Controls - Omit UID from dropdown options */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', alignItems: 'end' }}>
           <div>
-            <label className="form-label">Okutulacak Kart</label>
+            <label className="form-label">Okutulacak Kullanıcı</label>
             <select
               value={selectedCardId}
               onChange={(e) => handleCardChange(e.target.value)}
               className="form-select"
             >
               {cards.length === 0 ? (
-                <option value="">(Henüz Kart Yok - Önce Kart Ekleyin)</option>
+                <option value="">(Henüz Kullanıcı Yok - Önce Kayıt Ekleyin)</option>
               ) : (
                 cards.map(c => (
                   <option key={c.id || c.uid} value={c.id || c.uid}>
-                    {c.holderName} ({c.uid}) - İzinler: [{Array.isArray(c.allowedGates) ? c.allowedGates.join(', ') : (c.accessLevel || 'Belirtilmedi')}]
+                    {c.holderName} ({c.department || c.faculty || 'Birim'}) - İzinler: [{Array.isArray(c.allowedGates) ? c.allowedGates.join(', ') : (c.accessLevel || 'Belirtilmedi')}]
                   </option>
                 ))
               )}
@@ -205,7 +201,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
 
           <div>
             <label className="form-label" style={{ color: '#38bdf8', fontWeight: 700 }}>
-               Geçiş Yapılacak Kapı (Seçiniz):
+              🚪 Geçiş Yapılacak Kapı (Seçiniz):
             </label>
             <select
               value={selectedGate}
@@ -252,7 +248,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
                   }
                 </div>
                 <div style={{ fontSize: '0.78rem', color: '#cbd5e1', marginTop: '2px' }}>
-                  {simFeedback.holderName} ({simFeedback.cardUid}) • Denenen Kapı: <strong>{simFeedback.gate}</strong>
+                  Kullanıcı: <strong>{simFeedback.holderName}</strong> • Denenen Kapı: <strong>{simFeedback.gate}</strong>
                 </div>
               </div>
             </div>
@@ -263,19 +259,19 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
         )}
       </div>
 
-      {/* Access Logs Table */}
+      {/* Access Logs Table - Omit UID Column */}
       <div className="glass-panel" style={{ padding: '20px', background: '#162038' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
           <div>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc' }}>Geçiş Kayıtları Log Listesi</h3>
-            <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>Turnikelerden geçen kartların canlı hareket dökümü.</p>
+            <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>Turnikelerden geçen kullanıcıların hareket dökümü (İsim ve Soyisime Göre Tutulur).</p>
           </div>
 
-          <div style={{ position: 'relative', width: '220px' }}>
+          <div style={{ position: 'relative', width: '240px' }}>
             <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#cbd5e1' }} />
             <input
               type="text"
-              placeholder="İsim, Kapı veya UID Ara..."
+              placeholder="İsim veya Kapı Ara..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="form-input"
@@ -289,8 +285,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
             <thead>
               <tr>
                 <th>Tarih & Saat</th>
-                <th>Kart Sahibi</th>
-                <th>RFID UID</th>
+                <th>Kullanıcı Ad Soyad</th>
                 <th>Kapı</th>
                 <th>Yön</th>
                 <th>Geçiş Durumu / Sonuç</th>
@@ -301,7 +296,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
             <tbody>
               {filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', color: '#cbd5e1', padding: '30px' }}>
+                  <td colSpan={7} style={{ textAlign: 'center', color: '#cbd5e1', padding: '30px' }}>
                     Henüz geçiş kaydı bulunmuyor. Turnikede kart okutun veya yukarıdan Giriş/Çıkış yapın.
                   </td>
                 </tr>
@@ -311,12 +306,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
                     <td style={{ fontSize: '0.78rem', color: '#cbd5e1', fontFamily: 'var(--font-mono)' }}>
                       {log.timestamp}
                     </td>
-                    <td style={{ fontWeight: 600, color: '#f8fafc' }}>{log.holderName}</td>
-                    <td>
-                      <span className="form-input-mono" style={{ fontSize: '0.78rem', padding: '3px 8px', background: '#0b1329', borderRadius: '4px', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)' }}>
-                        {log.uid}
-                      </span>
-                    </td>
+                    <td style={{ fontWeight: 700, color: '#f8fafc', fontSize: '0.92rem' }}>{log.holderName}</td>
                     <td style={{ fontSize: '0.82rem', color: '#38bdf8', fontWeight: 700 }}>
                       <DoorClosed size={12} style={{ display: 'inline', marginRight: '4px' }} />
                       {log.gate}

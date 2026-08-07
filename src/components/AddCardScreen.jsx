@@ -418,7 +418,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div className="nfc-chip"></div>
                 <span style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '1px', color: '#7dd3fc' }}>
-                  {cardType === 'Öğrenci' ? '🎓 ÖĞRENCİ KARTI' : '💼 PERSONEL KARTI'}
+                  {cardType === 'Öğrenci' ? '🎓 ÖĞRENCİ KARTI' : ' PERSONEL KARTI'}
                 </span>
               </div>
 

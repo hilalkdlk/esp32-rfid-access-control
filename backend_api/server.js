@@ -351,7 +351,7 @@ app.post('/api/logs', async (req, res) => {
 
 /**
  * ----------------------------------------------------------------------------
- * 9. LITTLEFS PENDINGLOGS TOPLU SENKRONİZASYON ENDPOINT'İ
+ * 9. LITTLEFS PENDINGLOGS TOPLU SENKRONİZASYON ENDPOINT'İ (KART SAHİBİ VE DURUM EŞLEŞTİRMELİ)
  * ----------------------------------------------------------------------------
  * Yön: POST /api/logs/sync
  */
@@ -363,12 +363,39 @@ app.post('/api/logs/sync', async (req, res) => {
       return res.json({ success: true, syncedCount: 0, message: "Senkronize edilecek bekleyen log bulunamadı." });
     }
 
+    // Firestore'daki mevcut tüm kartları çekerek UID ile Kart Sahibi eşleşmesi sağla
+    const cardsSnapshot = await db.collection('cards').get();
+    const cardsMap = new Map();
+
+    cardsSnapshot.forEach(doc => {
+      const c = doc.data();
+      if (c.uid) {
+        const cleanUid = c.uid.toUpperCase().replace(/\s+/g, '');
+        cardsMap.set(cleanUid, c);
+      }
+    });
+
     const batch = db.batch();
 
     pendingLogs.forEach(pLog => {
       const logRef = db.collection('access_logs').doc();
+      const cleanLogUid = (pLog.uid || '').toUpperCase().replace(/\s+/g, '');
+      const matchedCard = cardsMap.get(cleanLogUid);
+
+      const resolvedHolderName = matchedCard ? matchedCard.holderName : (pLog.holderName || 'Çevrimdışı Tanımsız Kart');
+      const isAuthorized = pLog.relayTriggered !== undefined 
+        ? pLog.relayTriggered 
+        : (pLog.status && pLog.status.includes('Yetkili'));
+
       batch.set(logRef, {
-        ...pLog,
+        uid: (pLog.uid || 'UNKNOWN').toUpperCase().trim(),
+        holderName: resolvedHolderName,
+        gate: pLog.gate || 'Ana Giriş Turnikesi',
+        direction: pLog.direction || 'Giriş',
+        status: pLog.status || (isAuthorized ? 'Yetkili' : 'Yetkisiz'),
+        relayTriggered: Boolean(isAuthorized),
+        buzzerBeeps: isAuthorized ? 1 : 3,
+        timestamp: new Date().toISOString(),
         syncedToFirestore: true,
         syncedTime: new Date().toISOString(),
         createdAt: admin.firestore.FieldValue.serverTimestamp()
@@ -377,7 +404,7 @@ app.post('/api/logs/sync', async (req, res) => {
 
     await batch.commit();
 
-    console.log(`[FIRESTORE SENKRON] LittleFS üzerinden ${pendingLogs.length} adet çevrimdışı log Firestore'a aktarıldı.`);
+    console.log(`[FIRESTORE SENKRON OK] LittleFS üzerinden ${pendingLogs.length} adet çevrimdışı log kart sahibi isimleriyle eşleştirilerek Firestore'a aktarıldı.`);
 
     res.json({
       success: true,

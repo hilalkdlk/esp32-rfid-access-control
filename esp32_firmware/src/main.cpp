@@ -58,10 +58,10 @@ const unsigned long CARDS_SYNC_INTERVAL = 300000; // 5 dakikada bir otomatik car
 void setupHardware();
 void checkEthernetConnection();
 void handleCardRead(String cardUID);
-bool checkCardAuthorizationOffline(String cardUID);
+bool checkCardAuthorizationOffline(String cardUID, String &foundHolderName);
 void grantAccess();
 void denyAccess();
-void logAccessOffline(String cardUID, bool isGranted);
+void logAccessOffline(String cardUID, bool isGranted, String holderName);
 void syncPendingLogs();
 void updateLocalCardsFromAPI();
 void selectRFID();
@@ -102,6 +102,7 @@ void setup() {
     
     // Açılışta API'den güncel kart listesini otomatik olarak çekip LittleFS'e kaydet!
     updateLocalCardsFromAPI();
+    syncPendingLogs();
   }
 
   // 3. MFRC522 RFID Okuyucu Başlatma
@@ -226,12 +227,14 @@ void updateLocalCardsFromAPI() {
       if (millis() - timeout > 4000) {
         Serial.println("⚠️ [Zamanaşımı] Kart güncellemesi yanıt vermedi.");
         ethClient.stop();
+        selectRFID();
         return;
       }
     }
 
     String response = ethClient.readString();
     ethClient.stop();
+    selectRFID();
 
     int jsonStart = response.indexOf("{\"success\":true");
     if (jsonStart != -1) {
@@ -248,12 +251,15 @@ void updateLocalCardsFromAPI() {
         Serial.println("✅ [LITTLEFS OK] LittleFS cards.json dosyası REST API'den otomatik olarak başarıyla güncellendi!");
       }
     }
+  } else {
+    selectRFID();
   }
 }
 
 // 💳 Kart Okuma Mantığı (Online vs Offline)
 void handleCardRead(String cardUID) {
   bool isAuthorized = false;
+  bool processedOnline = false;
 
   if (isInternetAvailable) {
     // --- ÇEVRİMİÇİ (ONLINE) MOD: REST API'ye Sor ---
@@ -277,7 +283,6 @@ void handleCardRead(String cardUID) {
         if (millis() - timeout > 3000) {
           Serial.println("⚠️ [API Zamanaşımı] Çevrimdışı doğrulama moduna geçiliyor.");
           ethClient.stop();
-          isAuthorized = checkCardAuthorizationOffline(cardUID);
           break;
         }
       }
@@ -285,20 +290,26 @@ void handleCardRead(String cardUID) {
       if (ethClient.available()) {
         String response = ethClient.readString();
         ethClient.stop();
+        processedOnline = true;
         
         if (response.indexOf("\"authorized\":true") > 0) {
           isAuthorized = true;
         }
       }
     } else {
-      Serial.println("⚠️ REST API Sunucusuna Bağlanılamadı! LittleFS ile kontrol ediliyor.");
-      isAuthorized = checkCardAuthorizationOffline(cardUID);
+      Serial.println("⚠️ REST API Sunucusuna Bağlanılamadı! Çevrimdışı (LittleFS) doğrulama moduna geçiliyor.");
     }
-  } else {
-    // --- ÇEVRİMDİŞİ (OFFLINE) MOD: LittleFS cards.json'dan Kontrol Et ---
+    selectRFID();
+  }
+
+  // --- EĞER ONLINE CEVAP ALINAMADIYSA ÇEVRİMDİŞİ (OFFLINE) MODA DÜŞ ---
+  if (!processedOnline) {
     Serial.println("📁 Çevrimdışı Mod: LittleFS cards.json dosyasından kontrol ediliyor...");
-    isAuthorized = checkCardAuthorizationOffline(cardUID);
-    logAccessOffline(cardUID, isAuthorized);
+    String foundHolderName = "Çevrimdışı Tanımsız Kart";
+    isAuthorized = checkCardAuthorizationOffline(cardUID, foundHolderName);
+    
+    // Çevrimdışı Okutmayı LittleFS pendingLogs.json Dosyasına Yaz!
+    logAccessOffline(cardUID, isAuthorized, foundHolderName);
   }
 
   // İzin Durumuna Göre Röle ve Buzzer Çalıştır
@@ -310,9 +321,11 @@ void handleCardRead(String cardUID) {
 }
 
 // 📁 LittleFS cards.json Dosyasından Yetki Kontrolü
-bool checkCardAuthorizationOffline(String cardUID) {
+bool checkCardAuthorizationOffline(String cardUID, String &foundHolderName) {
+  foundHolderName = "Çevrimdışı Tanımsız Kart";
+
   if (!LittleFS.exists("/cards.json")) {
-    Serial.println("⚠️ cards.json dosyası bulunamadı!");
+    Serial.println("⚠️ LittleFS /cards.json dosyası henüz hafızada yok!");
     return false;
   }
 
@@ -322,7 +335,7 @@ bool checkCardAuthorizationOffline(String cardUID) {
   file.close();
 
   if (error) {
-    Serial.println("❌ cards.json ayrıştırma hatası!");
+    Serial.println("❌ LittleFS cards.json ayrıştırma hatası!");
     return false;
   }
 
@@ -330,10 +343,33 @@ bool checkCardAuthorizationOffline(String cardUID) {
   for (JsonObject card : array) {
     String fileUid = card["uid"].as<String>();
     fileUid.toUpperCase();
-    if (fileUid == cardUID && card["status"].as<String>() == "Aktif") {
-      return true;
+    
+    // Kart UID ve Durumu Aktif mi?
+    if (fileUid == cardUID) {
+      if (card.containsKey("holderName")) {
+        foundHolderName = card["holderName"].as<String>();
+      }
+
+      if (card["status"].as<String>() == "Aktif") {
+        // Kapı Yetki Kontrolü
+        if (card.containsKey("allowedGates")) {
+          JsonArray gates = card["allowedGates"].as<JsonArray>();
+          for (JsonVariant g : gates) {
+            String gateStr = g.as<String>();
+            if (gateStr == "Tüm Kapılar / Yönetici" || gateStr == String(DEVICE_GATE)) {
+              Serial.println("✅ [OFFLINE İZİN VERİLDİ] LittleFS yetkisi doğrulandı -> " + foundHolderName);
+              return true;
+            }
+          }
+        } else {
+          Serial.println("✅ [OFFLINE İZİN VERİLDİ] LittleFS yetkisi doğrulandı -> " + foundHolderName);
+          return true;
+        }
+      }
     }
   }
+
+  Serial.println("🔒 [OFFLINE ERİŞİM REDDEDİLDİ] Kart LittleFS üzerinde yetkisiz veya engelli.");
   return false;
 }
 
@@ -362,7 +398,7 @@ void denyAccess() {
 }
 
 // 📁 Çevrimdışı Log Kaydı (LittleFS pendingLogs.json Dosyasına Yazma)
-void logAccessOffline(String cardUID, bool isGranted) {
+void logAccessOffline(String cardUID, bool isGranted, String holderName) {
   DynamicJsonDocument doc(4096);
   JsonArray array;
 
@@ -375,16 +411,18 @@ void logAccessOffline(String cardUID, bool isGranted) {
   array = doc.to<JsonArray>();
   JsonObject newLog = array.createNestedObject();
   newLog["uid"] = cardUID;
+  newLog["holderName"] = holderName;
   newLog["gate"] = DEVICE_GATE;
   newLog["direction"] = "Giriş";
   newLog["status"] = isGranted ? "Yetkili" : "Yetkisiz";
-  newLog["timestamp"] = millis();
+  newLog["relayTriggered"] = isGranted;
+  newLog["buzzerBeeps"] = isGranted ? 1 : 3;
 
   File file = LittleFS.open("/pendingLogs.json", "w");
   serializeJson(doc, file);
   file.close();
 
-  Serial.println("📁 Çevrimdışı geçiş kaydı LittleFS pendingLogs.json dosyasına yazıldı.");
+  Serial.println("💾 [OFFLINE LOG OK] LittleFS pendingLogs.json dosyasına yazıldı: " + holderName + " -> Röle: " + (isGranted ? "AÇIK" : "KAPALI"));
 }
 
 // ⚡ LittleFS pendingLogs.json Üzerindeki Bekleyen Logları REST API'ye Aktarma
@@ -394,6 +432,10 @@ void syncPendingLogs() {
   File file = LittleFS.open("/pendingLogs.json", "r");
   String pendingJson = file.readString();
   file.close();
+
+  if (pendingJson.length() < 5) return;
+
+  Serial.println("⚡ [LITTLEFS SENKRON] Bekleyen çevrimdışı loglar REST API'ye (Firestore) aktarılıyor...");
 
   selectEthernet();
   if (ethClient.connect(apiHost, apiPort)) {
@@ -410,10 +452,13 @@ void syncPendingLogs() {
 
     delay(500);
     ethClient.stop();
+    selectRFID();
 
     // Senkronize edilen dosyayı temizle
     LittleFS.remove("/pendingLogs.json");
-    Serial.println("⚡ LittleFS pendingLogs.json kayıtları REST API'ye aktarıldı ve dosya temizlendi!");
+    Serial.println("✅ [LITTLEFS SENKRON OK] Bekleyen çevrimdışı loglar REST API'ye (Firestore) aktarıldı ve LittleFS temizlendi!");
+  } else {
+    selectRFID();
   }
 }
 
