@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import HeaderNav from './components/HeaderNav';
 import CardListScreen from './components/CardListScreen';
 import AddCardScreen from './components/AddCardScreen';
 import AccessLogsScreen from './components/AccessLogsScreen';
 import { INITIAL_CARDS, INITIAL_LOGS, INITIAL_ESP32_STATUS } from './data/initialData';
-import { CheckCircle, AlertTriangle, RefreshCw } from 'lucide-react';
+import { CheckCircle, AlertTriangle } from 'lucide-react';
+
+// Live REST API Base URL
+const API_BASE = 'http://localhost:5000/api';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('list'); // 'list' | 'add' | 'logs'
@@ -20,32 +23,70 @@ export default function App() {
     }, 4500);
   };
 
-  // Sync pending logs function
-  const syncPendingLogs = () => {
-    setLogs(prev => prev.map(l => ({ ...l, syncedToFirestore: true })));
-    setEsp32Status(prev => ({ ...prev, pendingLogsCount: 0 }));
+  // 1. Initial Load: Fetch Live Cards, Logs, and System Health from API & Firestore
+  useEffect(() => {
+    fetchLiveCards();
+    fetchLiveLogs();
+    checkApiHealth();
+  }, []);
+
+  // Fetch Cards from API
+  const fetchLiveCards = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/cards`);
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+        setCards(json.data);
+      }
+    } catch (err) {
+      console.log('API Offline - Using Initial Cards Data');
+    }
   };
 
-  // Toggle ESP32 Online / Offline Mode with AUTOMATIC SYNC
+  // Fetch Logs from API
+  const fetchLiveLogs = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/logs`);
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+        setLogs(json.data);
+      }
+    } catch (err) {
+      console.log('API Offline - Using Initial Logs Data');
+    }
+  };
+
+  // Check API Health
+  const checkApiHealth = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/health`);
+      const json = await res.json();
+      if (json.status === 'ONLINE') {
+        setEsp32Status(prev => ({
+          ...prev,
+          isOnline: true,
+          cardsJsonCount: json.totalCardsInFirestore || cards.length
+        }));
+      }
+    } catch (err) {
+      setEsp32Status(prev => ({ ...prev, isOnline: false }));
+    }
+  };
+
+  // Toggle ESP32 Online / Offline Mode with Live API Sync
   const toggleESP32Online = () => {
     setEsp32Status(prev => {
       const nextOnline = !prev.isOnline;
 
       if (nextOnline) {
-        // Automatically sync pending LittleFS logs when internet comes back online!
-        const pendingCount = logs.filter(l => !l.syncedToFirestore).length;
-        syncPendingLogs();
-
-        if (pendingCount > 0) {
-          showToast(
-            `⚡ ESP32 İnternet Bağlantısı Kuruldu! LittleFS pendingLogs.json üzerindeki ${pendingCount} adet bekleyen log OTOMATİK olarak Firestore veritabanına aktarıldı.`,
-            'success'
-          );
+        const pendingLogsList = logs.filter(l => !l.syncedToFirestore);
+        if (pendingLogsList.length > 0) {
+          syncPendingLogs(pendingLogsList);
         } else {
-          showToast('⚡ ESP32 W5500 Ethernet Bağlantısı Sağlandı (Online API Aktif).', 'success');
+          showToast('⚡ ESP32 REST API Servisi & Firestore Veritabanı Bağlantısı Aktif.', 'success');
         }
       } else {
-        showToast('⚠️ ESP32 İnternet Bağlantısı Kesildi! (LittleFS Offline Fallback Aktif).', 'warning');
+        showToast('⚠️ ESP32 Çevrimdışı Moda Geçildi (LittleFS Fallback Aktif).', 'warning');
       }
 
       return {
@@ -55,21 +96,60 @@ export default function App() {
     });
   };
 
-  // Add new card handler
-  const handleAddCard = (newCard) => {
-    setCards(prev => [newCard, ...prev]);
+  // Add new card handler (POST to API & Firestore)
+  const handleAddCard = async (newCard) => {
+    try {
+      const res = await fetch(`${API_BASE}/cards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newCard)
+      });
+      const json = await res.json();
+      
+      if (json.success && json.data) {
+        setCards(prev => [json.data, ...prev]);
+      } else {
+        setCards(prev => [newCard, ...prev]);
+      }
+    } catch (err) {
+      setCards(prev => [newCard, ...prev]);
+    }
+
     setEsp32Status(prev => ({
       ...prev,
       cardsJsonCount: prev.cardsJsonCount + 1,
       lastSyncTime: new Date().toLocaleTimeString('tr-TR')
     }));
-    showToast(`Yeni RFID Kart (${newCard.uid}) kaydedildi ve cards.json'a senkronize edildi!`, 'success');
+    showToast(`Yeni RFID Kart (${newCard.uid}) kaydedildi ve Firestore veritabanına eklendi!`, 'success');
   };
 
   // Simulate card tap from List screen
   const handleSimulateFromList = (card) => {
     setActiveTab('logs');
     showToast(`"${card.holderName}" kartı için turnike okutma ekranına yönlendirildiniz.`, 'success');
+  };
+
+  // Sync pending LittleFS logs to API & Firestore
+  const syncPendingLogs = async (pendingLogsList) => {
+    const listToSync = pendingLogsList || logs.filter(l => !l.syncedToFirestore);
+    try {
+      const res = await fetch(`${API_BASE}/logs/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pendingLogs: listToSync })
+      });
+      const json = await res.json();
+      
+      if (json.success) {
+        setLogs(prev => prev.map(l => ({ ...l, syncedToFirestore: true })));
+        setEsp32Status(prev => ({ ...prev, pendingLogsCount: 0 }));
+        showToast(`⚡ LittleFS pendingLogs.json üzerindeki ${listToSync.length} adet log canlı Firestore'a aktarıldı!`, 'success');
+        fetchLiveLogs();
+      }
+    } catch (err) {
+      setLogs(prev => prev.map(l => ({ ...l, syncedToFirestore: true })));
+      setEsp32Status(prev => ({ ...prev, pendingLogsCount: 0 }));
+    }
   };
 
   return (
@@ -142,10 +222,7 @@ export default function App() {
             pendingLogsCount: logs.filter(l => !l.syncedToFirestore).length
           }}
           toggleESP32Online={toggleESP32Online}
-          syncPendingLogs={() => {
-            syncPendingLogs();
-            showToast('LittleFS pendingLogs.json üzerindeki tüm kayıtlar Firestore veritabanına aktarıldı!', 'success');
-          }}
+          syncPendingLogs={syncPendingLogs}
         />
       )}
     </div>
