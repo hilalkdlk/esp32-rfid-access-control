@@ -128,6 +128,26 @@ export default function App() {
     fetchLiveCards();
   };
 
+  // Update Card Details (PUT /api/cards/:id)
+  const handleUpdateCard = async (cardId, updatedFields) => {
+    try {
+      const res = await fetch(`${API_BASE}/cards/${cardId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedFields)
+      });
+      const json = await res.json();
+      if (json.success) {
+        setCards(prev => prev.map(c => c.id === cardId ? { ...c, ...updatedFields } : c));
+        showToast('Kart bilgileri başarıyla güncellendi ve Firestore\'a işlendi!', 'success');
+      } else {
+        setCards(prev => prev.map(c => c.id === cardId ? { ...c, ...updatedFields } : c));
+      }
+    } catch (err) {
+      setCards(prev => prev.map(c => c.id === cardId ? { ...c, ...updatedFields } : c));
+    }
+  };
+
   // Toggle Card Status (Aktif / Engelli) with Live API & Firestore Update
   const handleToggleCardStatus = async (cardId, currentStatus) => {
     const nextStatus = currentStatus === 'Aktif' ? 'Engelli' : 'Aktif';
@@ -243,6 +263,7 @@ export default function App() {
       {activeTab === 'list' && (
         <CardListScreen 
           cards={cards}
+          onUpdateCard={handleUpdateCard}
           onToggleCardStatus={handleToggleCardStatus}
           onDeleteCard={handleDeleteCard}
           onNavigateToAdd={() => setActiveTab('add')}

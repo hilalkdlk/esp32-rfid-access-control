@@ -93,7 +93,7 @@ app.get('/api/cards', async (req, res) => {
  */
 app.post('/api/cards', async (req, res) => {
   try {
-    const { uid, holderName, employeeId, department, accessLevel, allowedGates, status } = req.body;
+    const { uid, holderName, cardType, employeeId, faculty, department, accessLevel, allowedGates, status } = req.body;
     
     if (!uid || !holderName) {
       return res.status(400).json({ success: false, error: "UID ve Kart Sahibi ad-soyad zorunludur." });
@@ -101,8 +101,10 @@ app.post('/api/cards', async (req, res) => {
 
     const newCardData = {
       uid: uid.toUpperCase().trim(),
-      holderName,
+      holderName: holderName.trim(),
+      cardType: cardType || "Personel",
       employeeId: employeeId || "EMP-2026-000",
+      faculty: faculty || "N/A",
       department: department || "Genel",
       accessLevel: accessLevel || "Ana Giriş Turnikesi",
       allowedGates: allowedGates || [accessLevel],
@@ -129,7 +131,53 @@ app.post('/api/cards', async (req, res) => {
 
 /**
  * ----------------------------------------------------------------------------
- * 4. KART DURUMU GÜNCELLEME ENDPOINT'İ (AKTİF / ENGELLİ)
+ * 4. KART BİLGİLERİNİ GÜNCELLEME ENDPOINT'İ (TÜM ALANLAR)
+ * ----------------------------------------------------------------------------
+ * Yön: PUT /api/cards/:id
+ */
+app.put('/api/cards/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { holderName, cardType, employeeId, faculty, department, accessLevel, allowedGates, status } = req.body;
+
+    const cardRef = db.collection('cards').doc(id);
+    const doc = await cardRef.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({ success: false, error: "Güncellenecek kart bulunamadı." });
+    }
+
+    const updateData = {
+      ...(holderName && { holderName: holderName.trim() }),
+      ...(cardType && { cardType }),
+      ...(employeeId && { employeeId: employeeId.trim() }),
+      ...(faculty && { faculty }),
+      ...(department && { department }),
+      ...(accessLevel && { accessLevel }),
+      ...(allowedGates && { allowedGates }),
+      ...(status && { status }),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      syncedToESP32: true
+    };
+
+    await cardRef.update(updateData);
+
+    console.log(`[FIRESTORE] Kart Bilgileri Güncellendi: ID ${id} -> ${holderName || doc.data().holderName}`);
+
+    res.json({
+      success: true,
+      message: "Kart bilgileri başarıyla güncellendi.",
+      data: { id, ...doc.data(), ...updateData }
+    });
+  } catch (error) {
+    console.error('[API HATA] Kart güncellenirken hata:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * ----------------------------------------------------------------------------
+ * 5. KART DURUMU GÜNCELLEME ENDPOINT'İ (AKTİF / ENGELLİ)
  * ----------------------------------------------------------------------------
  * Yön: PUT /api/cards/:id/status
  */
@@ -165,7 +213,7 @@ app.put('/api/cards/:id/status', async (req, res) => {
 
 /**
  * ----------------------------------------------------------------------------
- * 5. KART SİLME ENDPOINT'İ
+ * 6. KART SİLME ENDPOINT'İ
  * ----------------------------------------------------------------------------
  * Yön: DELETE /api/cards/:id
  */
@@ -184,7 +232,7 @@ app.delete('/api/cards/:id', async (req, res) => {
 
 /**
  * ----------------------------------------------------------------------------
- * 6. GEÇİŞ LOGLARINI GÖRÜNTÜLEME ENDPOINT'İ (EN SON 100 LOG)
+ * 7. GEÇİŞ LOGLARINI GÖRÜNTÜLEME ENDPOINT'İ (EN SON 100 LOG)
  * ----------------------------------------------------------------------------
  * Yön: GET /api/logs
  */
@@ -219,7 +267,7 @@ app.get('/api/logs', async (req, res) => {
 
 /**
  * ----------------------------------------------------------------------------
- * 7. CANLI KART GEÇİŞ KAYDI EKLEME (STRICT KAPI YETKİ KONTROLÜ İLE)
+ * 8. CANLI KART GEÇİŞ KAYDI EKLEME (STRICT KAPI YETKİ KONTROLÜ İLE)
  * ----------------------------------------------------------------------------
  * Yön: POST /api/logs
  */
@@ -250,7 +298,7 @@ app.post('/api/logs', async (req, res) => {
     // 2. Kartın Bu Özel Kapıya Yetkisi Var mı? (Strict Gate Control)
     let hasGatePermission = false;
     if (isActive) {
-      const cardAccess = targetCard.accessLevel || targetCard.allowedGates;
+      const cardAccess = targetCard.allowedGates || targetCard.accessLevel;
       if (
         cardAccess === "Tüm Kapılar / Yönetici" ||
         (Array.isArray(cardAccess) && (cardAccess.includes("Tüm Kapılar / Yönetici") || cardAccess.includes(currentGate))) ||
@@ -303,7 +351,7 @@ app.post('/api/logs', async (req, res) => {
 
 /**
  * ----------------------------------------------------------------------------
- * 8. LITTLEFS PENDINGLOGS TOPLU SENKRONİZASYON ENDPOINT'İ
+ * 9. LITTLEFS PENDINGLOGS TOPLU SENKRONİZASYON ENDPOINT'İ
  * ----------------------------------------------------------------------------
  * Yön: POST /api/logs/sync
  */

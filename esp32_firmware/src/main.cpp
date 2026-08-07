@@ -25,6 +25,13 @@
 // SPI Pinleri: SCK = 18, MISO = 19, MOSI = 23
 
 // ----------------------------------------------------------------------------
+// BU ESP32 DONANIMININ BULUNDUĞU KAPI İSMİ
+// (Fiziki cihaz hangi kapıya bağlıysa buraya o kapının adını yazabilirsiniz)
+// Seçenekler: "Ana Giriş Turnikesi", "AR-GE Laboratuvar Kapısı", "Yönetim Katı Turnikesi", "Otopark Bariyeri", "Server Oda Kapısı"
+// ----------------------------------------------------------------------------
+const char* DEVICE_GATE = "Ana Giriş Turnikesi";
+
+// ----------------------------------------------------------------------------
 // DONANIM NESNELERİ VE AYARLAR
 // ----------------------------------------------------------------------------
 MFRC522 rfid(SS_PIN, RST_PIN);
@@ -68,6 +75,8 @@ void setup() {
   delay(1000);
   Serial.println("\n==================================================");
   Serial.println("🚀 ESP32 AKILLI KARTLI GEÇİŞ SİSTEMİ BAŞLATILIYOR");
+  Serial.print("🚪 Cihazın Bağlı Olduğu Kapı: ");
+  Serial.println(DEVICE_GATE);
   Serial.println("==================================================");
 
   setupHardware();
@@ -136,7 +145,9 @@ void loop() {
   cardUID.toUpperCase();
 
   Serial.print("📡 [RFID KART OKUNDU] UID: ");
-  Serial.println(cardUID);
+  Serial.print(cardUID);
+  Serial.print(" @ Kapı: ");
+  Serial.println(DEVICE_GATE);
 
   // 5. Kart Okuma İşlemini İşle (Online REST API veya Offline LittleFS)
   handleCardRead(cardUID);
@@ -250,7 +261,7 @@ void handleCardRead(String cardUID) {
     
     selectEthernet();
     if (ethClient.connect(apiHost, apiPort)) {
-      String postData = "{\"uid\":\"" + cardUID + "\",\"gate\":\"Ana Giriş Turnikesi\",\"direction\":\"Giriş\"}";
+      String postData = "{\"uid\":\"" + cardUID + "\",\"gate\":\"" + String(DEVICE_GATE) + "\",\"direction\":\"Giriş\"}";
       
       ethClient.println("POST /api/logs HTTP/1.1");
       ethClient.println("Host: " + String(apiHost));
@@ -364,7 +375,7 @@ void logAccessOffline(String cardUID, bool isGranted) {
   array = doc.to<JsonArray>();
   JsonObject newLog = array.createNestedObject();
   newLog["uid"] = cardUID;
-  newLog["gate"] = "Ana Giriş Turnikesi";
+  newLog["gate"] = DEVICE_GATE;
   newLog["direction"] = "Giriş";
   newLog["status"] = isGranted ? "Yetkili" : "Yetkisiz";
   newLog["timestamp"] = millis();
