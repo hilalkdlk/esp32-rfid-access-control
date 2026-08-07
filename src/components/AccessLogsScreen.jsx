@@ -155,14 +155,14 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Simulator Box */}
       <div className="glass-panel" style={{ padding: '20px', background: '#162038' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ padding: '8px', background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#ffffff', borderRadius: '8px', display: 'flex' }}>
-              <Zap size={20} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '18px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ padding: '10px', background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#ffffff', borderRadius: '10px', display: 'flex' }}>
+              <Zap size={22} />
             </div>
             <div>
-              <h2 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#f8fafc' }}>Turnike Kart Okutma Simülatörü</h2>
-              <p style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+              <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc' }}>Turnike Kart Okutma Simülatörü</h2>
+              <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>
                 {esp32Status.isOnline 
                   ? '🌐 Online Mod: Seçilen kapı izinlerine göre dinamik doğrulama yapılır, loglar Firestore\'a işlenir.'
                   : '🔌 Offline Mod: İnternet yok. İletilen kartlar LittleFS pendingLogs.json belgesine kaydedilir.'
@@ -175,7 +175,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
             <button 
               onClick={syncPendingLogs}
               className="btn btn-primary"
-              style={{ background: '#d97706', fontSize: '0.8rem' }}
+              style={{ background: '#d97706', fontSize: '0.8rem', padding: '8px 14px' }}
             >
               <HardDrive size={15} /> {pendingCount} Bekleyen Çevrimdışı Logu Firestore'a Aktar
             </button>
@@ -205,7 +205,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
 
           <div>
             <label className="form-label" style={{ color: '#38bdf8', fontWeight: 700 }}>
-              🚪 Geçiş Yapılacak Kapı (Seçiniz):
+               Geçiş Yapılacak Kapı (Seçiniz):
             </label>
             <select
               value={selectedGate}
@@ -232,9 +232,9 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
         {/* Feedback Alert */}
         {simFeedback && (
           <div style={{
-            marginTop: '14px',
-            padding: '12px 16px',
-            borderRadius: '8px',
+            marginTop: '16px',
+            padding: '14px 18px',
+            borderRadius: '10px',
             background: simFeedback.isAuthorized ? 'rgba(16, 185, 129, 0.15)' : 'rgba(244, 63, 94, 0.15)',
             border: `1px solid ${simFeedback.isAuthorized ? 'rgba(16, 185, 129, 0.4)' : 'rgba(244, 63, 94, 0.4)'}`,
             display: 'flex',
@@ -242,40 +242,44 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
             justifyContent: 'space-between',
             color: simFeedback.isAuthorized ? '#34d399' : '#f87171'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              {simFeedback.isAuthorized ? <ShieldCheck size={22} /> : <ShieldAlert size={22} />}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {simFeedback.isAuthorized ? <ShieldCheck size={24} /> : <ShieldAlert size={24} />}
               <div>
-                <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>
+                <div style={{ fontWeight: 800, fontSize: '0.92rem' }}>
                   {simFeedback.isAuthorized 
                     ? `🔓 "${simFeedback.gate}" KAFESİNDE ERİŞİM İZNİ VERİLDİ (RÖLE AÇIK)` 
                     : `🔒 "${simFeedback.gate}" ERİŞİMİ REDDEDİLDİ! (${simFeedback.statusText})`
                   }
                 </div>
-                <div style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>
+                <div style={{ fontSize: '0.78rem', color: '#cbd5e1', marginTop: '2px' }}>
                   {simFeedback.holderName} ({simFeedback.cardUid}) • Denenen Kapı: <strong>{simFeedback.gate}</strong>
                 </div>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontWeight: 600 }}>
-              <Volume2 size={16} /> Buzzer: {simFeedback.buzzerBeeps} Kısa Bip
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700 }}>
+              <Volume2 size={18} /> Buzzer: {simFeedback.buzzerBeeps} Kısa Bip
             </div>
           </div>
         )}
       </div>
 
       {/* Access Logs Table */}
-      <div className="glass-panel" style={{ padding: '20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#f8fafc' }}>Geçiş Kayıtları Log Listesi</h3>
-          <div style={{ position: 'relative', width: '200px' }}>
-            <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+      <div className="glass-panel" style={{ padding: '20px', background: '#162038' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+          <div>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc' }}>Geçiş Kayıtları Log Listesi</h3>
+            <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>Turnikelerden geçen kartların canlı hareket dökümü.</p>
+          </div>
+
+          <div style={{ position: 'relative', width: '220px' }}>
+            <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#cbd5e1' }} />
             <input
               type="text"
               placeholder="İsim, Kapı veya UID Ara..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="form-input"
-              style={{ paddingLeft: '32px', padding: '6px 10px 6px 32px', fontSize: '0.82rem' }}
+              style={{ paddingLeft: '36px', fontSize: '0.84rem' }}
             />
           </div>
         </div>
@@ -297,19 +301,19 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
             <tbody>
               {filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', color: '#94a3b8', padding: '20px' }}>
+                  <td colSpan={8} style={{ textAlign: 'center', color: '#cbd5e1', padding: '30px' }}>
                     Henüz geçiş kaydı bulunmuyor. Turnikede kart okutun veya yukarıdan Giriş/Çıkış yapın.
                   </td>
                 </tr>
               ) : (
                 filteredLogs.map(log => (
                   <tr key={log.id}>
-                    <td style={{ fontSize: '0.78rem', color: '#94a3b8', fontFamily: 'var(--font-mono)' }}>
+                    <td style={{ fontSize: '0.78rem', color: '#cbd5e1', fontFamily: 'var(--font-mono)' }}>
                       {log.timestamp}
                     </td>
                     <td style={{ fontWeight: 600, color: '#f8fafc' }}>{log.holderName}</td>
                     <td>
-                      <span className="form-input-mono" style={{ fontSize: '0.78rem', padding: '2px 6px', background: '#0b1329', borderRadius: '4px', color: '#38bdf8' }}>
+                      <span className="form-input-mono" style={{ fontSize: '0.78rem', padding: '3px 8px', background: '#0b1329', borderRadius: '4px', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)' }}>
                         {log.uid}
                       </span>
                     </td>

@@ -34,6 +34,10 @@
   --radius-sm: 8px;
 }
 
+html {
+  overflow-y: scroll; /* Force vertical scrollbar to prevent horizontal layout jumps */
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -57,8 +61,10 @@ body {
   border: 1px solid var(--border-glass);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
   position: relative;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .glass-panel:hover {
@@ -267,7 +273,7 @@ body {
 .custom-table th {
   background: #0b1329;
   color: #cbd5e1;
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -277,7 +283,7 @@ body {
 }
 
 .custom-table td {
-  padding: 14px 16px;
+  padding: 12px 16px;
   color: var(--text-main);
   font-size: 0.88rem;
   border-bottom: 1px solid #293859;
@@ -291,6 +297,7 @@ body {
 /* Glowing Holographic NFC Card Preview */
 .nfc-card-container {
   perspective: 1000px;
+  width: 100%;
 }
 
 .nfc-card-preview {
@@ -309,6 +316,7 @@ body {
   overflow: hidden;
   color: #ffffff;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  margin: 0 auto;
 }
 
 .nfc-card-preview:hover {

@@ -222,7 +222,7 @@ export default function App() {
   };
 
   return (
-    <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '24px 16px 48px 16px' }}>
+    <div style={{ maxWidth: '1440px', width: '100%', margin: '0 auto', padding: '24px 24px 48px 24px', boxSizing: 'border-box' }}>
       {/* Toast Notification Alert */}
       {notification && (
         <div style={{

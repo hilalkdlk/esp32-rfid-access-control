@@ -150,21 +150,21 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
   };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', width: '100%' }}>
       {/* Left Column: Form */}
-      <div className="glass-panel" style={{ padding: '24px', background: '#162038' }}>
-        <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div className="glass-panel" style={{ padding: '20px', background: '#162038' }}>
+        <div style={{ marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ padding: '10px', background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#ffffff', borderRadius: '10px', display: 'flex' }}>
             <Sparkles size={22} />
           </div>
           <div>
-            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc' }}>Yeni RFID Kart Tanımlama</h2>
-            <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Gelişmiş veri doğrulama kontrollü kayıt formu.</p>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc' }}>Yeni RFID Kart Tanımlama</h2>
+            <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>Gelişmiş veri doğrulama kontrollü kayıt formu.</p>
           </div>
         </div>
 
         {/* Card Type Selector (Primary Sky Cyan / Ocean Blue Theme) */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '18px' }}>
           <button
             type="button"
             onClick={() => { setCardType('Öğrenci'); setErrorMsg(''); }}
@@ -186,7 +186,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
             }}
           >
             <GraduationCap size={18} color={cardType === 'Öğrenci' ? '#38bdf8' : '#64748b'} />
-            🎓 Öğrenci Kaydı
+            Öğrenci Kaydı
           </button>
 
           <button
@@ -210,7 +210,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
             }}
           >
             <Briefcase size={18} color={cardType === 'Personel' ? '#38bdf8' : '#64748b'} />
-            💼 Personel Kaydı
+            Personel Kaydı
           </button>
         </div>
 
@@ -405,10 +405,10 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
       </div>
 
       {/* Right Column: Live Preview */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        <div className="glass-panel" style={{ padding: '24px', background: '#162038', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f8fafc', marginBottom: '16px', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <ShieldCheck size={18} color="#38bdf8" /> Canlı Dijital RFID Kart Önizlemesi
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
+        <div className="glass-panel" style={{ padding: '20px', background: '#162038', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc', marginBottom: '18px', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <ShieldCheck size={20} color="#38bdf8" /> Canlı Dijital RFID Kart Önizlemesi
           </h3>
 
           <div className="nfc-card-container" style={{ width: '100%' }}>
@@ -424,7 +424,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
 
               <div>
                 <div style={{ fontSize: '0.65rem', color: '#cbd5e1', textTransform: 'uppercase' }}>RFID UID</div>
-                <div className="form-input-mono" style={{ fontSize: '1.3rem', fontWeight: 800, letterSpacing: '2px' }}>
+                <div className="form-input-mono" style={{ fontSize: '1.3rem', fontWeight: '800', letterSpacing: '2px' }}>
                   {uid || '00 00 00 00'}
                 </div>
               </div>
@@ -454,12 +454,12 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
           </div>
         </div>
 
-        <div className="glass-panel" style={{ padding: '18px', background: '#162038', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="glass-panel" style={{ padding: '18px 20px', background: '#162038', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#f8fafc' }}>Giriş-Çıkış Logları</div>
-            <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Turnikede kart okutma simülatörü</div>
+            <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#f8fafc' }}>Giriş-Çıkış Logları</div>
+            <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>Turnikede kart okutma simülatörü</div>
           </div>
-          <button onClick={onNavigateToLogs} className="btn btn-secondary btn-sm">
+          <button onClick={onNavigateToLogs} className="btn btn-secondary btn-sm" style={{ padding: '8px 14px' }}>
             3. Adıma Git <ArrowRight size={14} />
           </button>
         </div>
