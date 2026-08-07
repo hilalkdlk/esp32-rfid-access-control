@@ -34,8 +34,8 @@ byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 EthernetClient ethClient;
 
 // Node.js REST API Sunucu Bilgileri
-// NOT: Kendi bilgisayarınızın yerel IP adresini buraya yazabilirsiniz (Örn: "192.168.1.100")
-const char* apiHost = "192.168.1.100";
+// IMPORTANT: Kendi bilgisayarınızın IP adresini cmd'de 'ipconfig' yazarak öğrenip buraya girin (Örn: "192.168.1.150")
+const char* apiHost = "192.168.1.150";
 const int apiPort = 5000;
 
 // Sistem Durum Değişkenleri
@@ -58,6 +58,8 @@ void denyAccess();
 void logAccessOffline(String cardUID, bool isGranted);
 void syncPendingLogs();
 void updateLocalCardsFromAPI();
+void selectRFID();
+void selectEthernet();
 
 // ============================================================================
 // SETUP (BAŞLANGIÇ AYARLARI)
@@ -79,6 +81,7 @@ void setup() {
   }
 
   // 2. W5500 Ethernet Başlatma
+  selectEthernet();
   Ethernet.init(W5500_CS);
   Serial.println("🌐 W5500 Ethernet başlatılıyor, DHCP'den IP alınıyor...");
   if (Ethernet.begin(mac) == 0) {
@@ -94,6 +97,7 @@ void setup() {
   }
 
   // 3. MFRC522 RFID Okuyucu Başlatma
+  selectRFID();
   rfid.PCD_Init();
   byte version = rfid.PCD_ReadRegister(MFRC522::VersionReg);
   Serial.print("📡 MFRC522 RFID Okuyucu Versiyonu: 0x");
@@ -118,6 +122,7 @@ void loop() {
   }
 
   // 3. Yeni Kart Okutuldu mu Kontrol Et
+  selectRFID();
   if (!rfid.PICC_IsNewCardPresent() || !rfid.PICC_ReadCardSerial()) {
     return;
   }
@@ -138,6 +143,7 @@ void loop() {
   handleCardRead(cardUID);
 
   // RFID Okuyucuyu Bir Sonraki Okumaya Hazırla
+  selectRFID();
   rfid.PICC_HaltA();
   rfid.PCD_StopCrypto1();
   delay(1000);
@@ -153,18 +159,30 @@ void setupHardware() {
   digitalWrite(RELAY_PIN, LOW);   // Röle Başlangıçta Kapılı (Kilitli)
   digitalWrite(BUZZER_PIN, LOW);  // Buzzer Kapalı
 
-  // SPI Veri Yolu Başlat (SCK=18, MISO=19, MOSI=23, CS=5)
+  // SPI Veri Yolu Başlat (SCK=18, MISO=19, MOSI=23)
   SPI.begin(18, 19, 23);
 
-  // CS Pinlerini Pasifleştir (Çakışmayı önlemek için)
+  // CS Pinlerini Pasifleştir (SPI Çakışmasını Önlemek İçin)
   pinMode(W5500_CS, OUTPUT);
   digitalWrite(W5500_CS, HIGH);
   pinMode(SS_PIN, OUTPUT);
   digitalWrite(SS_PIN, HIGH);
 }
 
-// 🌐 Ethernet Bağlantısı & İnternet Kontrolü (Adım 3)
+// SPI CS Seçicileri
+void selectRFID() {
+  digitalWrite(W5500_CS, HIGH);
+  digitalWrite(SS_PIN, LOW);
+}
+
+void selectEthernet() {
+  digitalWrite(SS_PIN, HIGH);
+  digitalWrite(W5500_CS, LOW);
+}
+
+// 🌐 Ethernet Bağlantısı & İnternet Kontrolü
 void checkEthernetConnection() {
+  selectEthernet();
   if (Ethernet.linkStatus() == LinkON) {
     if (!isInternetAvailable) {
       Serial.println("🌐 [İnternet Bağlantısı Kuruldu] LittleFS senkronizasyonu başlatılıyor...");
@@ -186,6 +204,7 @@ void updateLocalCardsFromAPI() {
 
   Serial.println("⚡ [LITTLEFS SENKRON] REST API'den güncel cards.json listesi isteniyor...");
 
+  selectEthernet();
   if (ethClient.connect(apiHost, apiPort)) {
     ethClient.println("GET /api/cards HTTP/1.1");
     ethClient.println("Host: " + String(apiHost));
@@ -201,7 +220,6 @@ void updateLocalCardsFromAPI() {
       }
     }
 
-    // Yanıt gövdesindeki (body) JSON kısmını bul
     String response = ethClient.readString();
     ethClient.stop();
 
@@ -213,7 +231,6 @@ void updateLocalCardsFromAPI() {
       DeserializationError err = deserializeJson(doc, jsonBody);
       
       if (!err && doc.containsKey("data")) {
-        // cards.json dosyasını LittleFS içine otomatik kaydet
         File file = LittleFS.open("/cards.json", "w");
         serializeJson(doc["data"], file);
         file.close();
@@ -232,6 +249,7 @@ void handleCardRead(String cardUID) {
     // --- ÇEVRİMİÇİ (ONLINE) MOD: REST API'ye Sor ---
     Serial.println("🌐 REST API'ye yetki kontrol isteği gönderiliyor...");
     
+    selectEthernet();
     if (ethClient.connect(apiHost, apiPort)) {
       String postData = "{\"uid\":\"" + cardUID + "\",\"gate\":\"Ana Giriş Turnikesi\",\"direction\":\"Giriş\"}";
       
@@ -367,6 +385,7 @@ void syncPendingLogs() {
   String pendingJson = file.readString();
   file.close();
 
+  selectEthernet();
   if (ethClient.connect(apiHost, apiPort)) {
     String postPayload = "{\"pendingLogs\":" + pendingJson + "}";
     
