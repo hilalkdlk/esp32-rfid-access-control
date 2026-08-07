@@ -1,14 +1,23 @@
 import React, { useState } from 'react';
 import confetti from 'canvas-confetti';
-import { RefreshCw, ArrowRight, Sparkles, AlertCircle, CheckCircle2, PlusCircle, ShieldCheck, DoorClosed } from 'lucide-react';
-import { DEPARTMENTS, GATES } from '../data/initialData';
+import { RefreshCw, ArrowRight, Sparkles, AlertCircle, CheckCircle2, PlusCircle, ShieldCheck, DoorClosed, GraduationCap, Briefcase } from 'lucide-react';
+import { DEPARTMENTS, FACULTIES, STUDENT_DEPARTMENTS, GATES } from '../data/initialData';
 
 export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
+  // Card Type Selector: 'Öğrenci' | 'Personel' (Default: Öğrenci)
+  const [cardType, setCardType] = useState('Öğrenci');
+
   const [uid, setUid] = useState('E4 9A 12 77');
   const [holderName, setHolderName] = useState('');
   const [employeeId, setEmployeeId] = useState('');
-  const [department, setDepartment] = useState(DEPARTMENTS[0]);
   
+  // Student Specific Fields
+  const [faculty, setFaculty] = useState(FACULTIES[0]);
+  const [studentDepartment, setStudentDepartment] = useState(STUDENT_DEPARTMENTS[0]);
+  
+  // Staff Specific Fields
+  const [staffDepartment, setStaffDepartment] = useState(DEPARTMENTS[0]);
+
   // Multi-select gates state
   const ALL_PERMISSIONS = ["Tüm Kapılar / Yönetici", ...GATES];
   const [selectedGates, setSelectedGates] = useState(["Ana Giriş Turnikesi"]);
@@ -53,7 +62,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
       return;
     }
     if (!employeeId.trim()) {
-      setErrorMsg('Lütfen Sicil / T.C. No bilgisini giriniz.');
+      setErrorMsg(cardType === 'Öğrenci' ? 'Lütfen öğrenci numarasını giriniz.' : 'Lütfen Sicil / T.C. No bilgisini giriniz.');
       return;
     }
     setErrorMsg('');
@@ -63,12 +72,16 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
       ? "Tüm Kapılar / Yönetici"
       : selectedGates.join(", ");
 
+    const departmentValue = cardType === 'Öğrenci' ? studentDepartment : staffDepartment;
+
     const newCard = {
       id: `card-${Date.now()}`,
       uid,
       holderName,
+      cardType, // 'Öğrenci' veya 'Personel'
       employeeId,
-      department,
+      faculty: cardType === 'Öğrenci' ? faculty : 'N/A',
+      department: departmentValue,
       accessLevel: formattedAccessLevel,
       allowedGates: selectedGates,
       status,
@@ -93,15 +106,66 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
       {/* Left Column: Form */}
-      <div className="glass-panel" style={{ padding: '24px', background: '#1e293b' }}>
+      <div className="glass-panel" style={{ padding: '24px', background: '#162038' }}>
         <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ padding: '10px', background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', color: '#ffffff', borderRadius: '10px', display: 'flex' }}>
+          <div style={{ padding: '10px', background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#ffffff', borderRadius: '10px', display: 'flex' }}>
             <Sparkles size={22} />
           </div>
           <div>
             <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc' }}>Yeni RFID Kart Tanımlama</h2>
-            <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Geçiş yetkilerini ve kapı erişimlerini özelleştirin.</p>
+            <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Öğrenci veya Personel kartı oluşturun.</p>
           </div>
+        </div>
+
+        {/* Card Type Selector (Primary Sky Cyan / Ocean Blue Theme) */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+          <button
+            type="button"
+            onClick={() => setCardType('Öğrenci')}
+            style={{
+              padding: '12px 14px',
+              borderRadius: '10px',
+              border: `2px solid ${cardType === 'Öğrenci' ? '#38bdf8' : '#293859'}`,
+              background: cardType === 'Öğrenci' ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.2) 0%, rgba(2, 132, 199, 0.3) 100%)' : '#0b1329',
+              color: cardType === 'Öğrenci' ? '#ffffff' : '#94a3b8',
+              cursor: 'pointer',
+              fontWeight: 700,
+              fontSize: '0.88rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              boxShadow: cardType === 'Öğrenci' ? '0 0 18px rgba(56, 189, 248, 0.35)' : 'none',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <GraduationCap size={18} color={cardType === 'Öğrenci' ? '#38bdf8' : '#64748b'} />
+            🎓 Öğrenci Kaydı
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setCardType('Personel')}
+            style={{
+              padding: '12px 14px',
+              borderRadius: '10px',
+              border: `2px solid ${cardType === 'Personel' ? '#38bdf8' : '#293859'}`,
+              background: cardType === 'Personel' ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.2) 0%, rgba(2, 132, 199, 0.3) 100%)' : '#0b1329',
+              color: cardType === 'Personel' ? '#ffffff' : '#94a3b8',
+              cursor: 'pointer',
+              fontWeight: 700,
+              fontSize: '0.88rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              boxShadow: cardType === 'Personel' ? '0 0 18px rgba(56, 189, 248, 0.35)' : 'none',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <Briefcase size={18} color={cardType === 'Personel' ? '#38bdf8' : '#64748b'} />
+            💼 Personel Kaydı
+          </button>
         </div>
 
         {errorMsg && (
@@ -142,46 +206,95 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
               value={holderName}
               onChange={(e) => setHolderName(e.target.value)}
               className="form-input"
-              placeholder="Örn: Ahmet Yılmaz"
+              placeholder={cardType === 'Öğrenci' ? 'Örn: Zeynep Çelik' : 'Örn: Ahmet Yılmaz'}
               required
             />
           </div>
 
-          {/* Employee ID & Department */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div className="form-group">
-              <label className="form-label">Sicil / T.C. No</label>
-              <input
-                type="text"
-                value={employeeId}
-                onChange={(e) => setEmployeeId(e.target.value)}
-                className="form-input form-input-mono"
-                placeholder="EMP-2026-001"
-                required
-              />
-            </div>
+          {/* Conditional Form Fields Based on Card Type */}
+          {cardType === 'Öğrenci' ? (
+            <>
+              {/* Student No & Faculty */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="form-group">
+                  <label className="form-label">Öğrenci Numarası</label>
+                  <input
+                    type="text"
+                    value={employeeId}
+                    onChange={(e) => setEmployeeId(e.target.value)}
+                    className="form-input form-input-mono"
+                    placeholder="2026010402"
+                    required
+                  />
+                </div>
 
-            <div className="form-group">
-              <label className="form-label">Departman / Birim</label>
-              <select
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-                className="form-select"
-              >
-                {DEPARTMENTS.map(dept => (
-                  <option key={dept} value={dept}>{dept}</option>
-                ))}
-              </select>
-            </div>
-          </div>
+                <div className="form-group">
+                  <label className="form-label">Fakülte</label>
+                  <select
+                    value={faculty}
+                    onChange={(e) => setFaculty(e.target.value)}
+                    className="form-select"
+                  >
+                    {FACULTIES.map(fac => (
+                      <option key={fac} value={fac}>{fac}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
-          {/* Luxury Multi-Select Gate Access Pills Matrix */}
+              {/* Student Department */}
+              <div className="form-group">
+                <label className="form-label">Bölüm</label>
+                <select
+                  value={studentDepartment}
+                  onChange={(e) => setStudentDepartment(e.target.value)}
+                  className="form-select"
+                >
+                  {STUDENT_DEPARTMENTS.map(dept => (
+                    <option key={dept} value={dept}>{dept}</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Staff Employee ID & Department */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="form-group">
+                  <label className="form-label">Sicil / T.C. No</label>
+                  <input
+                    type="text"
+                    value={employeeId}
+                    onChange={(e) => setEmployeeId(e.target.value)}
+                    className="form-input form-input-mono"
+                    placeholder="EMP-2026-104"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Birim / Departman</label>
+                  <select
+                    value={staffDepartment}
+                    onChange={(e) => setStaffDepartment(e.target.value)}
+                    className="form-select"
+                  >
+                    {DEPARTMENTS.map(dept => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Multi-Select Gate Access Pills Matrix (Primary Sky Cyan Palette) */}
           <div className="form-group" style={{ marginTop: '12px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
               <label className="form-label" style={{ margin: 0 }}>
                 Erişim İzni Verilen Kapılar (Çoklu Seçim):
               </label>
-              <span style={{ fontSize: '0.72rem', color: '#a5b4fc', fontWeight: 600 }}>
+              <span style={{ fontSize: '0.72rem', color: '#38bdf8', fontWeight: 600 }}>
                 {selectedGates.includes("Tüm Kapılar / Yönetici") ? "Tüm Kapılar Açık" : `${selectedGates.length} Kapı Seçili`}
               </span>
             </div>
@@ -202,20 +315,20 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
                       padding: '9px 12px',
                       borderRadius: '8px',
                       background: isSelected 
-                        ? (isAllGates ? 'linear-gradient(135deg, #059669 0%, #047857 100%)' : 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)')
-                        : '#0f172a',
-                      border: `1px solid ${isSelected ? (isAllGates ? '#34d399' : '#818cf8') : '#334155'}`,
+                        ? (isAllGates ? 'linear-gradient(135deg, #059669 0%, #047857 100%)' : 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)')
+                        : '#0b1329',
+                      border: `1px solid ${isSelected ? (isAllGates ? '#34d399' : '#38bdf8') : '#293859'}`,
                       color: isSelected ? '#ffffff' : '#94a3b8',
                       cursor: 'pointer',
                       fontSize: '0.8rem',
                       fontWeight: isSelected ? 700 : 500,
-                      boxShadow: isSelected ? (isAllGates ? '0 4px 12px rgba(16, 185, 129, 0.3)' : '0 4px 12px rgba(99, 102, 241, 0.3)') : 'none',
+                      boxShadow: isSelected ? (isAllGates ? '0 4px 12px rgba(16, 185, 129, 0.3)' : '0 4px 12px rgba(56, 189, 248, 0.35)') : 'none',
                       transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                       userSelect: 'none'
                     }}
                   >
                     {isSelected ? (
-                      <CheckCircle2 size={15} style={{ flexShrink: 0, color: isAllGates ? '#a7f3d0' : '#c7d2fe' }} />
+                      <CheckCircle2 size={15} style={{ flexShrink: 0, color: isAllGates ? '#a7f3d0' : '#7dd3fc' }} />
                     ) : (
                       <PlusCircle size={15} style={{ flexShrink: 0, color: '#64748b' }} />
                     )}
@@ -234,23 +347,27 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
             className="btn btn-primary"
             style={{ width: '100%', padding: '12px', marginTop: '16px', fontSize: '0.92rem' }}
           >
-            {isSubmitting ? 'Kaydediliyor...' : 'Kartı Kaydet & ESP32\'ye Gönder'}
+            {isSubmitting ? 'Kaydediliyor...' : `${cardType} Kartını Kaydet & ESP32'ye Gönder`}
           </button>
         </form>
       </div>
 
       {/* Right Column: Live Preview */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        <div className="glass-panel" style={{ padding: '24px', background: '#1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div className="glass-panel" style={{ padding: '24px', background: '#162038', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f8fafc', marginBottom: '16px', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <ShieldCheck size={18} color="#818cf8" /> Canlı Dijital RFID Kart Önizlemesi
+            <ShieldCheck size={18} color="#38bdf8" /> Canlı Dijital RFID Kart Önizlemesi
           </h3>
 
           <div className="nfc-card-container" style={{ width: '100%' }}>
-            <div className="nfc-card-preview">
+            <div className="nfc-card-preview" style={{
+              background: 'linear-gradient(135deg, #0f172a 0%, #0369a1 50%, #0284c7 100%)'
+            }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div className="nfc-chip"></div>
-                <span style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '1px', color: '#a5b4fc' }}>NFC RFID CARD</span>
+                <span style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '1px', color: '#7dd3fc' }}>
+                  {cardType === 'Öğrenci' ? '🎓 ÖĞRENCİ KARTI' : '💼 PERSONEL KARTI'}
+                </span>
               </div>
 
               <div>
@@ -266,9 +383,14 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
                     {holderName.trim() || 'KART SAHİBİ AD SOYAD'}
                   </div>
                   <div style={{ fontSize: '0.72rem', color: '#cbd5e1' }}>
-                    {department} • {employeeId || 'ID NO'}
+                    {cardType === 'Öğrenci' ? `${studentDepartment} • NO: ${employeeId || '20260000'}` : `${staffDepartment} • NO: ${employeeId || 'EMP-000'}`}
                   </div>
-                  <div style={{ fontSize: '0.7rem', color: '#a5b4fc', fontWeight: 700, marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  {cardType === 'Öğrenci' && (
+                    <div style={{ fontSize: '0.68rem', color: '#e0f2fe', opacity: 0.9 }}>
+                      {faculty}
+                    </div>
+                  )}
+                  <div style={{ fontSize: '0.7rem', color: '#7dd3fc', fontWeight: 700, marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <DoorClosed size={12} /> {selectedGates.includes("Tüm Kapılar / Yönetici") ? "Tüm Kapılar Açık" : `${selectedGates.length} Kapı İzinli`}
                   </div>
                 </div>
@@ -280,7 +402,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
           </div>
         </div>
 
-        <div className="glass-panel" style={{ padding: '18px', background: '#1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="glass-panel" style={{ padding: '18px', background: '#162038', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#f8fafc' }}>Giriş-Çıkış Logları</div>
             <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Turnikede kart okutma simülatörü</div>

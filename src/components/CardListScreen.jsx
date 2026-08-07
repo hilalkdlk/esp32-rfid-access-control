@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-import { Search, Plus, ShieldCheck, ShieldAlert, Trash2, Zap, UserCheck, CreditCard } from 'lucide-react';
+import { Search, Plus, ShieldCheck, ShieldAlert, Trash2, Zap, UserCheck, CreditCard, GraduationCap, Briefcase } from 'lucide-react';
 
 export default function CardListScreen({ cards, setCards, onNavigateToAdd, onSimulateCard }) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedDept, setSelectedDept] = useState('ALL');
+  const [selectedType, setSelectedType] = useState('ALL');
 
   const filteredCards = cards.filter(card => {
-    const matchesSearch = card.holderName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          card.uid.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          card.employeeId.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDept = selectedDept === 'ALL' || card.department === selectedDept;
-    return matchesSearch && matchesDept;
+    const matchesSearch = (card.holderName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (card.uid || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (card.employeeId || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = selectedType === 'ALL' || card.cardType === selectedType;
+    return matchesSearch && matchesType;
   });
 
   const toggleCardStatus = (cardId) => {
@@ -31,6 +31,8 @@ export default function CardListScreen({ cards, setCards, onNavigateToAdd, onSim
 
   const activeCount = cards.filter(c => c.status === 'Aktif').length;
   const blockedCount = cards.filter(c => c.status === 'Engelli').length;
+  const studentCount = cards.filter(c => c.cardType === 'Öğrenci').length;
+  const staffCount = cards.filter(c => c.cardType === 'Personel' || !c.cardType).length;
 
   return (
     <div>
@@ -42,8 +44,10 @@ export default function CardListScreen({ cards, setCards, onNavigateToAdd, onSim
             <CreditCard size={22} />
           </div>
           <div>
-            <div style={{ fontSize: '0.78rem', color: '#cbd5e1', fontWeight: 600 }}>Toplam Kart</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ffffff' }}>{cards.length}</div>
+            <div style={{ fontSize: '0.78rem', color: '#cbd5e1', fontWeight: 600 }}>Toplam Kayıtlı Kart</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ffffff' }}>
+              {cards.length} <span style={{ fontSize: '0.75rem', color: '#a5b4fc', fontWeight: 500 }}>({studentCount} Öğrenci / {staffCount} Personel)</span>
+            </div>
           </div>
         </div>
 
@@ -79,7 +83,7 @@ export default function CardListScreen({ cards, setCards, onNavigateToAdd, onSim
               <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#cbd5e1' }} />
               <input
                 type="text"
-                placeholder="Kart Sahibi veya UID ile ara..."
+                placeholder="Kart Sahibi, No veya UID ile ara..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="form-input"
@@ -88,16 +92,14 @@ export default function CardListScreen({ cards, setCards, onNavigateToAdd, onSim
             </div>
 
             <select 
-              value={selectedDept} 
-              onChange={(e) => setSelectedDept(e.target.value)}
+              value={selectedType} 
+              onChange={(e) => setSelectedType(e.target.value)}
               className="form-select"
               style={{ width: 'auto', padding: '8px 12px', fontSize: '0.85rem' }}
             >
-              <option value="ALL">Tüm Birimler</option>
-              <option value="AR-GE Mühendisliği">AR-GE</option>
-              <option value="Bilgi İşlem / IT">Bilgi İşlem</option>
-              <option value="İnsan Kaynakları">İnsan Kaynakları</option>
-              <option value="Yazılım Stajyer">Stajyer</option>
+              <option value="ALL">Tüm Türler</option>
+              <option value="Öğrenci">🎓 Öğrenciler</option>
+              <option value="Personel">💼 Personeller</option>
             </select>
           </div>
 
@@ -112,10 +114,11 @@ export default function CardListScreen({ cards, setCards, onNavigateToAdd, onSim
             <thead>
               <tr>
                 <th>RFID UID</th>
+                <th>Tür</th>
                 <th>Kart Sahibi</th>
-                <th>Sicil No</th>
-                <th>Birim</th>
-                <th>Yetki</th>
+                <th>Öğrenci / Sicil No</th>
+                <th>Fakülte / Birim & Bölüm</th>
+                <th>İzinli Kapılar</th>
                 <th>Durum</th>
                 <th style={{ textAlign: 'right' }}>İşlem</th>
               </tr>
@@ -129,10 +132,38 @@ export default function CardListScreen({ cards, setCards, onNavigateToAdd, onSim
                         {card.uid}
                       </span>
                     </td>
+                    <td>
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '3px 8px',
+                        borderRadius: '6px',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        background: card.cardType === 'Öğrenci' ? 'rgba(99, 102, 241, 0.2)' : 'rgba(56, 189, 248, 0.2)',
+                        color: card.cardType === 'Öğrenci' ? '#a5b4fc' : '#38bdf8',
+                        border: `1px solid ${card.cardType === 'Öğrenci' ? 'rgba(99, 102, 241, 0.4)' : 'rgba(56, 189, 248, 0.4)'}`
+                      }}>
+                        {card.cardType === 'Öğrenci' ? <GraduationCap size={12} /> : <Briefcase size={12} />}
+                        {card.cardType || 'Personel'}
+                      </span>
+                    </td>
                     <td style={{ fontWeight: 600, color: '#ffffff' }}>{card.holderName}</td>
-                    <td style={{ color: '#cbd5e1', fontSize: '0.82rem' }}>{card.employeeId}</td>
-                    <td style={{ fontSize: '0.82rem', color: '#e2e8f0' }}>{card.department}</td>
-                    <td style={{ fontSize: '0.82rem', color: '#e2e8f0' }}>{card.accessLevel}</td>
+                    <td style={{ color: '#cbd5e1', fontSize: '0.82rem', fontFamily: 'var(--font-mono)' }}>{card.employeeId}</td>
+                    <td style={{ fontSize: '0.82rem', color: '#e2e8f0' }}>
+                      {card.cardType === 'Öğrenci' && card.faculty && card.faculty !== 'N/A' ? (
+                        <div>
+                          <div style={{ fontWeight: 600, color: '#f8fafc' }}>{card.faculty}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{card.department}</div>
+                        </div>
+                      ) : (
+                        card.department
+                      )}
+                    </td>
+                    <td style={{ fontSize: '0.82rem', color: '#a5b4fc', fontWeight: 600 }}>
+                      {card.accessLevel}
+                    </td>
                     <td>
                       <span className={card.status === 'Aktif' ? 'badge badge-active' : 'badge badge-blocked'}>
                         {card.status === 'Aktif' ? <ShieldCheck size={12} /> : <ShieldAlert size={12} />}
@@ -166,7 +197,7 @@ export default function CardListScreen({ cards, setCards, onNavigateToAdd, onSim
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '30px', color: '#cbd5e1' }}>
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '30px', color: '#cbd5e1' }}>
                     Kayıtlı kart bulunamadı.
                   </td>
                 </tr>

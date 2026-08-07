@@ -1,37 +1,36 @@
-/* Medium Slate Luxury Theme with Neon Glow Effects - ESP32 Access Control Admin */
+/* Deep Ocean Sky Cyan Luxury Theme - ESP32 Access Control Admin */
 :root {
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
-  /* Medium Slate Palette */
-  --bg-primary: #293548;       /* Slate Background */
-  --bg-secondary: #334155;     /* Slate 700 - Card Base */
-  --bg-card: #334155;          /* Card Background */
-  --bg-card-hover: #3d4d65;    /* Hover State */
-  --bg-glass: rgba(51, 65, 85, 0.9);
-  --border-glass: #475569;     /* Border */
-  --border-active: #818cf8;
+  /* Deep Midnight & Sky Cyan Palette */
+  --bg-primary: #0b1329;       /* Deepest Midnight 950 */
+  --bg-secondary: #162038;     /* Slate Ocean 850 - Card Base */
+  --bg-card: #162038;          /* Card Background */
+  --bg-card-hover: #1e2d4d;    /* Hover State */
+  --bg-glass: rgba(22, 32, 56, 0.92);
+  --border-glass: #293859;     /* Border */
+  --border-active: #38bdf8;
 
-  --accent-primary: #6366f1;   /* Indigo Glow */
-  --accent-primary-hover: #4f46e5;
-  --accent-secondary: #38bdf8; /* Cyan Glow */
+  --accent-primary: #0284c7;   /* Ocean Blue */
+  --accent-primary-hover: #0369a1;
+  --accent-secondary: #38bdf8; /* Sky Cyan Glow */
   --accent-success: #10b981;   /* Emerald Glow */
   --accent-danger: #f43f5e;    /* Rose Red Glow */
   --accent-warning: #f59e0b;   /* Amber Glow */
 
   --text-main: #ffffff;
   --text-muted: #cbd5e1;
-  --text-light: #f1f5f9;
+  --text-light: #f8fafc;
 
   /* Glow Shadows */
-  --shadow-card: 0 8px 20px -4px rgba(0, 0, 0, 0.25);
-  --glow-indigo: 0 0 18px rgba(99, 102, 241, 0.35);
-  --glow-cyan: 0 0 18px rgba(56, 189, 248, 0.35);
-  --glow-emerald: 0 0 18px rgba(16, 185, 129, 0.35);
-  --glow-rose: 0 0 18px rgba(244, 63, 94, 0.35);
+  --shadow-card: 0 12px 30px -5px rgba(0, 0, 0, 0.45);
+  --glow-cyan: 0 0 20px rgba(56, 189, 248, 0.38);
+  --glow-emerald: 0 0 20px rgba(16, 185, 129, 0.38);
+  --glow-rose: 0 0 20px rgba(244, 63, 94, 0.38);
 
-  --radius-lg: 14px;
-  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-md: 12px;
   --radius-sm: 8px;
 }
 
@@ -49,8 +48,9 @@ body {
   overflow-x: hidden;
   line-height: 1.5;
   background-image: 
-    radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.08) 0%, transparent 45%),
-    radial-gradient(circle at 90% 90%, rgba(56, 189, 248, 0.08) 0%, transparent 45%);
+    radial-gradient(circle at 15% 15%, rgba(56, 189, 248, 0.09) 0%, transparent 45%),
+    radial-gradient(circle at 85% 85%, rgba(2, 132, 199, 0.09) 0%, transparent 45%),
+    radial-gradient(circle at 50% 50%, rgba(11, 19, 41, 0.95) 0%, transparent 100%);
   background-attachment: fixed;
 }
 
@@ -65,19 +65,19 @@ body {
 }
 
 .glass-panel:hover {
-  border-color: #6366f1;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 0 15px rgba(99, 102, 241, 0.25);
+  border-color: #38bdf8;
+  box-shadow: 0 14px 32px -5px rgba(0, 0, 0, 0.5), 0 0 22px rgba(56, 189, 248, 0.3);
 }
 
 /* Specific Glow Cards */
-.glow-card-indigo {
-  border: 1px solid rgba(99, 102, 241, 0.4) !important;
-  box-shadow: var(--glow-indigo) !important;
+.glow-card-indigo, .glow-card-cyan {
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  box-shadow: var(--glow-cyan) !important;
 }
 
-.glow-card-indigo:hover {
-  box-shadow: 0 0 25px rgba(99, 102, 241, 0.5) !important;
-  border-color: #818cf8 !important;
+.glow-card-indigo:hover, .glow-card-cyan:hover {
+  box-shadow: 0 0 30px rgba(56, 189, 248, 0.6) !important;
+  border-color: #38bdf8 !important;
 }
 
 .glow-card-emerald {
@@ -86,7 +86,7 @@ body {
 }
 
 .glow-card-emerald:hover {
-  box-shadow: 0 0 25px rgba(16, 185, 129, 0.5) !important;
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.6) !important;
   border-color: #34d399 !important;
 }
 
@@ -96,32 +96,22 @@ body {
 }
 
 .glow-card-rose:hover {
-  box-shadow: 0 0 25px rgba(244, 63, 94, 0.5) !important;
+  box-shadow: 0 0 25px rgba(244, 63, 94, 0.6) !important;
   border-color: #fb7185 !important;
-}
-
-.glow-card-cyan {
-  border: 1px solid rgba(56, 189, 248, 0.4) !important;
-  box-shadow: var(--glow-cyan) !important;
-}
-
-.glow-card-cyan:hover {
-  box-shadow: 0 0 25px rgba(56, 189, 248, 0.5) !important;
-  border-color: #38bdf8 !important;
 }
 
 /* Pulsing Neon Animation */
 @keyframes neonPulse {
   0%, 100% {
-    box-shadow: 0 0 12px rgba(99, 102, 241, 0.3), inset 0 0 12px rgba(99, 102, 241, 0.15);
+    box-shadow: 0 0 14px rgba(56, 189, 248, 0.4), inset 0 0 12px rgba(56, 189, 248, 0.2);
   }
   50% {
-    box-shadow: 0 0 24px rgba(99, 102, 241, 0.6), inset 0 0 20px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 0 26px rgba(56, 189, 248, 0.75), inset 0 0 20px rgba(56, 189, 248, 0.35);
   }
 }
 
 .neon-active-step {
-  border: 2px solid #6366f1 !important;
+  border: 2px solid #38bdf8 !important;
   animation: neonPulse 2.5s infinite ease-in-out;
 }
 
@@ -142,24 +132,25 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
   color: #ffffff;
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.45);
 }
 
 .btn-primary:hover {
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6);
+  background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+  box-shadow: 0 6px 22px rgba(56, 189, 248, 0.55);
   transform: translateY(-1px);
 }
 
 .btn-secondary {
-  background: #475569;
+  background: #293859;
   color: #ffffff;
-  border: 1px solid #64748b;
+  border: 1px solid #3b4d75;
 }
 
 .btn-secondary:hover {
-  background: #64748b;
+  background: #3b4d75;
   box-shadow: 0 0 12px rgba(255, 255, 255, 0.15);
 }
 
@@ -249,8 +240,8 @@ body {
 .form-input, .form-select {
   width: 100%;
   padding: 10px 14px;
-  background: #1e293b;
-  border: 1px solid #475569;
+  background: #0b1329;
+  border: 1px solid #293859;
   border-radius: var(--radius-sm);
   color: var(--text-main);
   font-family: var(--font-family);
@@ -260,9 +251,9 @@ body {
 }
 
 .form-input:focus, .form-select:focus {
-  border-color: #818cf8;
-  box-shadow: 0 0 12px rgba(99, 102, 241, 0.35);
-  background: #1e293b;
+  border-color: #38bdf8;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.45);
+  background: #0b1329;
 }
 
 .form-input-mono {
@@ -277,7 +268,7 @@ body {
 }
 
 .custom-table th {
-  background: #1e293b;
+  background: #0b1329;
   color: #cbd5e1;
   font-size: 0.75rem;
   font-weight: 700;
@@ -285,19 +276,19 @@ body {
   letter-spacing: 0.5px;
   padding: 12px 16px;
   text-align: left;
-  border-bottom: 1px solid #475569;
+  border-bottom: 1px solid #293859;
 }
 
 .custom-table td {
   padding: 14px 16px;
   color: var(--text-main);
   font-size: 0.88rem;
-  border-bottom: 1px solid #475569;
+  border-bottom: 1px solid #293859;
   vertical-align: middle;
 }
 
 .custom-table tr:hover td {
-  background: #293548;
+  background: #1e2d4d;
 }
 
 /* Glowing Holographic NFC Card Preview */
@@ -312,9 +303,9 @@ body {
   height: 215px;
   border-radius: 16px;
   padding: 22px;
-  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%);
+  background: linear-gradient(135deg, #0b1329 0%, #0369a1 50%, #0284c7 100%);
   border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 15px 35px -10px rgba(0, 0, 0, 0.6), 0 0 25px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 15px 35px -10px rgba(0, 0, 0, 0.6), 0 0 25px rgba(56, 189, 248, 0.45);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -325,7 +316,7 @@ body {
 
 .nfc-card-preview:hover {
   transform: translateY(-4px) scale(1.01);
-  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.7), 0 0 35px rgba(99, 102, 241, 0.6);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.7), 0 0 35px rgba(56, 189, 248, 0.65);
 }
 
 .nfc-chip {
