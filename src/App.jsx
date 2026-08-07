@@ -14,6 +14,7 @@ export default function App() {
   const [cards, setCards] = useState([]);
   const [logs, setLogs] = useState([]);
   const [esp32Status, setEsp32Status] = useState(INITIAL_ESP32_STATUS);
+  const [selectedCardForSim, setSelectedCardForSim] = useState('');
   const [notification, setNotification] = useState(null);
 
   const showToast = (message, type = 'success') => {
@@ -108,11 +109,14 @@ export default function App() {
       
       if (json.success && json.data) {
         setCards(prev => [json.data, ...prev]);
+        setSelectedCardForSim(json.data.id || json.data.uid);
       } else {
         setCards(prev => [newCard, ...prev]);
+        setSelectedCardForSim(newCard.id || newCard.uid);
       }
     } catch (err) {
       setCards(prev => [newCard, ...prev]);
+      setSelectedCardForSim(newCard.id || newCard.uid);
     }
 
     setEsp32Status(prev => ({
@@ -126,8 +130,9 @@ export default function App() {
 
   // Simulate card tap from List screen
   const handleSimulateFromList = (card) => {
+    setSelectedCardForSim(card.id || card.uid);
     setActiveTab('logs');
-    showToast(`"${card.holderName}" kartı için turnike okutma ekranına yönlendirildiniz.`, 'success');
+    showToast(`"${card.holderName}" kartı turnike simülatöründe otomatik olarak seçildi.`, 'success');
   };
 
   // Sync pending LittleFS logs to API & Firestore
@@ -224,6 +229,7 @@ export default function App() {
           }}
           toggleESP32Online={toggleESP32Online}
           syncPendingLogs={syncPendingLogs}
+          selectedCardForSim={selectedCardForSim}
         />
       )}
     </div>

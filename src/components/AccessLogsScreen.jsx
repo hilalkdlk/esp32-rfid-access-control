@@ -1,18 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Zap, HardDrive, ShieldCheck, ShieldAlert, Volume2, Search, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { GATES } from '../data/initialData';
 
 const API_BASE = 'http://localhost:5000/api';
 
-export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, syncPendingLogs }) {
-  const [selectedCardId, setSelectedCardId] = useState(cards[0]?.id || '');
+export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, syncPendingLogs, selectedCardForSim }) {
+  const [selectedCardId, setSelectedCardId] = useState(selectedCardForSim || cards[0]?.id || cards[0]?.uid || '');
   const [selectedGate, setSelectedGate] = useState(GATES[0]);
   const [simFeedback, setSimFeedback] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Automatically pre-select the card clicked from List Screen or Add Screen
+  useEffect(() => {
+    if (selectedCardForSim) {
+      setSelectedCardId(selectedCardForSim);
+    } else if (cards.length > 0 && !selectedCardId) {
+      setSelectedCardId(cards[0].id || cards[0].uid);
+    }
+  }, [selectedCardForSim, cards]);
+
   const handleSimulateTap = async (direction) => {
     const targetCard = cards.find(c => c.id === selectedCardId || c.uid === selectedCardId);
-    const cardUid = targetCard ? targetCard.uid : 'FF FF FF FF';
+    const cardUid = targetCard ? targetCard.uid : (selectedCardId || 'FF FF FF FF');
     const holderName = targetCard ? targetCard.holderName : 'Tanımsız Kart';
     const isAuthorized = targetCard && targetCard.status === 'Aktif';
 
