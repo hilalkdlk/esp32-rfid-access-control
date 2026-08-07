@@ -22,14 +22,14 @@ Sistem; **ESP32**, **MFRC522 RFID okuyucu**, **W5500 Ethernet modülü**, **Röl
                            ▲
                            │ HTTP
                            ▼
-        ESP32 + W5500 Ethernet Modülü
-              │
-     ┌────────┴────────┐
-     │                 │
- MFRC522 RFID       Röle
-     │
- LittleFS
-(cards.json / pendingLogs.json)
+               ESP32 + W5500 Ethernet Modülü
+                           │
+                  ┌────────┴────────┐
+                  │                 │
+             MFRC522 RFID         Röle
+                  │
+               LittleFS
+     (cards.json / pendingLogs.json)
 ```
 
 ---
