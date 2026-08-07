@@ -33,9 +33,8 @@ MFRC522 rfid(SS_PIN, RST_PIN);
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 EthernetClient ethClient;
 
-// Node.js REST API Sunucu Bilgileri
-// IMPORTANT: Kendi bilgisayarınızın IP adresini cmd'de 'ipconfig' yazarak öğrenip buraya girin (Örn: "192.168.1.150")
-const char* apiHost = "192.168.1.150";
+// Node.js REST API Sunucu Bilgileri (Bilgisayarınızın Canlı Yerel IP Adresi)
+const char* apiHost = "10.130.0.118";
 const int apiPort = 5000;
 
 // Sistem Durum Değişkenleri
