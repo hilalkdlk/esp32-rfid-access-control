@@ -41,7 +41,10 @@ const int apiPort = 5000;
 // Sistem Durum Değişkenleri
 bool isInternetAvailable = false;
 unsigned long lastHeartbeat = 0;
-const unsigned long HEARTBEAT_INTERVAL = 10000; // 10 saniyede bir ping/bağlantı kontrolü
+const unsigned long HEARTBEAT_INTERVAL = 10000; // 10 saniyede bir ping & otomatik kart senkronizasyon kontrolü
+
+unsigned long lastCardsSync = 0;
+const unsigned long CARDS_SYNC_INTERVAL = 300000; // 5 dakikada bir otomatik cards.json güncelleme
 
 // ----------------------------------------------------------------------------
 // FONKSİYON PROTOTİPLERİ
@@ -54,6 +57,7 @@ void grantAccess();
 void denyAccess();
 void logAccessOffline(String cardUID, bool isGranted);
 void syncPendingLogs();
+void updateLocalCardsFromAPI();
 
 // ============================================================================
 // SETUP (BAŞLANGIÇ AYARLARI)
@@ -84,6 +88,9 @@ void setup() {
     Serial.print("✅ W5500 Ethernet Bağlandı! IP Adresi: ");
     Serial.println(Ethernet.localIP());
     isInternetAvailable = true;
+    
+    // Açılışta API'den güncel kart listesini otomatik olarak çekip LittleFS'e kaydet!
+    updateLocalCardsFromAPI();
   }
 
   // 3. MFRC522 RFID Okuyucu Başlatma
@@ -104,12 +111,18 @@ void loop() {
     checkEthernetConnection();
   }
 
-  // 2. Yeni Kart Okutuldu mu Kontrol Et
+  // 2. Periyodik Olarak API'den cards.json Güncelleme (5 dakikada bir)
+  if (isInternetAvailable && (millis() - lastCardsSync > CARDS_SYNC_INTERVAL)) {
+    lastCardsSync = millis();
+    updateLocalCardsFromAPI();
+  }
+
+  // 3. Yeni Kart Okutuldu mu Kontrol Et
   if (!rfid.PICC_IsNewCardPresent() || !rfid.PICC_ReadCardSerial()) {
     return;
   }
 
-  // 3. Okunan Kart UID Numarasını String Formatına Çevir (Örn: "11 B7 5A B7")
+  // 4. Okunan Kart UID Numarasını String Formatına Çevir (Örn: "11 B7 5A B7")
   String cardUID = "";
   for (byte i = 0; i < rfid.uid.size; i++) {
     if (rfid.uid.uidByte[i] < 0x10) cardUID += "0";
@@ -121,7 +134,7 @@ void loop() {
   Serial.print("📡 [RFID KART OKUNDU] UID: ");
   Serial.println(cardUID);
 
-  // 4. Kart Okuma İşlemini İşle (Online REST API veya Offline LittleFS)
+  // 5. Kart Okuma İşlemini İşle (Online REST API veya Offline LittleFS)
   handleCardRead(cardUID);
 
   // RFID Okuyucuyu Bir Sonraki Okumaya Hazırla
@@ -154,14 +167,59 @@ void setupHardware() {
 void checkEthernetConnection() {
   if (Ethernet.linkStatus() == LinkON) {
     if (!isInternetAvailable) {
-      Serial.println("🌐 [İnternet Bağlantısı Kuruldu] LittleFS pendingLogs.json senkronizasyonu başlatılıyor...");
+      Serial.println("🌐 [İnternet Bağlantısı Kuruldu] LittleFS senkronizasyonu başlatılıyor...");
       isInternetAvailable = true;
-      syncPendingLogs(); // Çevrimdışı oluşan logları otomatik olarak REST API'ye aktar!
+      updateLocalCardsFromAPI(); // Kart listesini hemen güncelle
+      syncPendingLogs();        // Çevrimdışı oluşan logları otomatik olarak REST API'ye aktar!
     }
   } else {
     if (isInternetAvailable) {
       Serial.println("🔌 [İnternet Kesildi] Çevrimdışı Moda Geçildi (LittleFS cards.json Kullanılacak).");
       isInternetAvailable = false;
+    }
+  }
+}
+
+// 🔄 API'DEN GÜNCEL KART LİSTESİNİ ÇEKİP LITTLEFS cards.json DOSYASINI OTOMATİK GÜNCELLEME
+void updateLocalCardsFromAPI() {
+  if (!isInternetAvailable) return;
+
+  Serial.println("⚡ [LITTLEFS SENKRON] REST API'den güncel cards.json listesi isteniyor...");
+
+  if (ethClient.connect(apiHost, apiPort)) {
+    ethClient.println("GET /api/cards HTTP/1.1");
+    ethClient.println("Host: " + String(apiHost));
+    ethClient.println("Connection: close");
+    ethClient.println();
+
+    unsigned long timeout = millis();
+    while (ethClient.available() == 0) {
+      if (millis() - timeout > 4000) {
+        Serial.println("⚠️ [Zamanaşımı] Kart güncellemesi yanıt vermedi.");
+        ethClient.stop();
+        return;
+      }
+    }
+
+    // Yanıt gövdesindeki (body) JSON kısmını bul
+    String response = ethClient.readString();
+    ethClient.stop();
+
+    int jsonStart = response.indexOf("{\"success\":true");
+    if (jsonStart != -1) {
+      String jsonBody = response.substring(jsonStart);
+      
+      DynamicJsonDocument doc(4096);
+      DeserializationError err = deserializeJson(doc, jsonBody);
+      
+      if (!err && doc.containsKey("data")) {
+        // cards.json dosyasını LittleFS içine otomatik kaydet
+        File file = LittleFS.open("/cards.json", "w");
+        serializeJson(doc["data"], file);
+        file.close();
+        
+        Serial.println("✅ [LITTLEFS OK] LittleFS cards.json dosyası REST API'den otomatik olarak başarıyla güncellendi!");
+      }
     }
   }
 }
@@ -175,7 +233,6 @@ void handleCardRead(String cardUID) {
     Serial.println("🌐 REST API'ye yetki kontrol isteği gönderiliyor...");
     
     if (ethClient.connect(apiHost, apiPort)) {
-      // API'ye HTTP POST isteği gönder
       String postData = "{\"uid\":\"" + cardUID + "\",\"gate\":\"Ana Giriş Turnikesi\",\"direction\":\"Giriş\"}";
       
       ethClient.println("POST /api/logs HTTP/1.1");
@@ -187,7 +244,6 @@ void handleCardRead(String cardUID) {
       ethClient.println();
       ethClient.println(postData);
 
-      // Yanıtı bekle ve oku
       unsigned long timeout = millis();
       while (ethClient.available() == 0) {
         if (millis() - timeout > 3000) {
@@ -233,7 +289,7 @@ bool checkCardAuthorizationOffline(String cardUID) {
   }
 
   File file = LittleFS.open("/cards.json", "r");
-  DynamicJsonDocument doc(2048);
+  DynamicJsonDocument doc(4096);
   DeserializationError error = deserializeJson(doc, file);
   file.close();
 
