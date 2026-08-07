@@ -3,7 +3,7 @@ import HeaderNav from './components/HeaderNav';
 import CardListScreen from './components/CardListScreen';
 import AddCardScreen from './components/AddCardScreen';
 import AccessLogsScreen from './components/AccessLogsScreen';
-import { INITIAL_CARDS, INITIAL_LOGS, INITIAL_ESP32_STATUS } from './data/initialData';
+import { INITIAL_ESP32_STATUS } from './data/initialData';
 import { CheckCircle, AlertTriangle } from 'lucide-react';
 
 // Live REST API Base URL
@@ -11,8 +11,8 @@ const API_BASE = 'http://localhost:5000/api';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('list'); // 'list' | 'add' | 'logs'
-  const [cards, setCards] = useState(INITIAL_CARDS);
-  const [logs, setLogs] = useState(INITIAL_LOGS);
+  const [cards, setCards] = useState([]);
+  const [logs, setLogs] = useState([]);
   const [esp32Status, setEsp32Status] = useState(INITIAL_ESP32_STATUS);
   const [notification, setNotification] = useState(null);
 
@@ -30,29 +30,29 @@ export default function App() {
     checkApiHealth();
   }, []);
 
-  // Fetch Cards from API
+  // Fetch Cards from API & Firestore
   const fetchLiveCards = async () => {
     try {
       const res = await fetch(`${API_BASE}/cards`);
       const json = await res.json();
-      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+      if (json.success && Array.isArray(json.data)) {
         setCards(json.data);
       }
     } catch (err) {
-      console.log('API Offline - Using Initial Cards Data');
+      console.log('API Offline');
     }
   };
 
-  // Fetch Logs from API
+  // Fetch Logs from API & Firestore
   const fetchLiveLogs = async () => {
     try {
       const res = await fetch(`${API_BASE}/logs`);
       const json = await res.json();
-      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+      if (json.success && Array.isArray(json.data)) {
         setLogs(json.data);
       }
     } catch (err) {
-      console.log('API Offline - Using Initial Logs Data');
+      console.log('API Offline');
     }
   };
 
@@ -65,7 +65,7 @@ export default function App() {
         setEsp32Status(prev => ({
           ...prev,
           isOnline: true,
-          cardsJsonCount: json.totalCardsInFirestore || cards.length
+          cardsJsonCount: json.totalCardsInFirestore || 0
         }));
       }
     } catch (err) {
@@ -121,6 +121,7 @@ export default function App() {
       lastSyncTime: new Date().toLocaleTimeString('tr-TR')
     }));
     showToast(`Yeni RFID Kart (${newCard.uid}) kaydedildi ve Firestore veritabanına eklendi!`, 'success');
+    fetchLiveCards();
   };
 
   // Simulate card tap from List screen

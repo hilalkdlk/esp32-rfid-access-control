@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Zap, HardDrive, ShieldCheck, ShieldAlert, Volume2, Search, ArrowUpRight, ArrowDownLeft, Clock } from 'lucide-react';
+import { Zap, HardDrive, ShieldCheck, ShieldAlert, Volume2, Search, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { GATES } from '../data/initialData';
+
+const API_BASE = 'http://localhost:5000/api';
 
 export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, syncPendingLogs }) {
   const [selectedCardId, setSelectedCardId] = useState(cards[0]?.id || '');
@@ -8,30 +10,66 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
   const [simFeedback, setSimFeedback] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const handleSimulateTap = (direction) => {
-    const targetCard = cards.find(c => c.id === selectedCardId);
+  const handleSimulateTap = async (direction) => {
+    const targetCard = cards.find(c => c.id === selectedCardId || c.uid === selectedCardId);
     const cardUid = targetCard ? targetCard.uid : 'FF FF FF FF';
     const holderName = targetCard ? targetCard.holderName : 'Tanımsız Kart';
     const isAuthorized = targetCard && targetCard.status === 'Aktif';
 
     const now = new Date();
-    const timestamp = now.toLocaleTimeString('tr-TR');
+    const timestamp = `${now.toISOString().split('T')[0]} ${now.toLocaleTimeString('tr-TR')}`;
 
-    const newLog = {
-      id: `log-${Date.now()}`,
-      timestamp: `${now.toISOString().split('T')[0]} ${timestamp}`,
-      uid: cardUid,
-      holderName,
-      gate: selectedGate,
-      direction,
-      status: isAuthorized ? 'Yetkili' : 'Yetkisiz',
-      mode: esp32Status.isOnline ? 'Online (API)' : 'Offline (LittleFS)',
-      relayTriggered: isAuthorized,
-      buzzerBeeps: isAuthorized ? 1 : 3,
-      syncedToFirestore: esp32Status.isOnline
-    };
+    // Send Live POST request to REST API & Firestore
+    let apiSuccess = false;
+    try {
+      const res = await fetch(`${API_BASE}/logs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uid: cardUid,
+          gate: selectedGate,
+          direction
+        })
+      });
+      const json = await res.json();
 
-    setLogs(prev => [newLog, ...prev]);
+      if (json.success && json.data) {
+        apiSuccess = true;
+        const newLog = {
+          id: json.data.id || `log-${Date.now()}`,
+          timestamp: json.data.timestamp || timestamp,
+          uid: cardUid,
+          holderName: json.data.holderName || holderName,
+          gate: selectedGate,
+          direction,
+          status: json.authorized ? 'Yetkili' : 'Yetkisiz',
+          mode: 'Online (API & Firestore)',
+          relayTriggered: json.relayTriggered,
+          buzzerBeeps: json.buzzerBeeps,
+          syncedToFirestore: true
+        };
+        setLogs(prev => [newLog, ...prev]);
+      }
+    } catch (err) {
+      console.log('API Offline - Using Local Log');
+    }
+
+    if (!apiSuccess) {
+      const fallbackLog = {
+        id: `log-${Date.now()}`,
+        timestamp,
+        uid: cardUid,
+        holderName,
+        gate: selectedGate,
+        direction,
+        status: isAuthorized ? 'Yetkili' : 'Yetkisiz',
+        mode: esp32Status.isOnline ? 'Online (API)' : 'Offline (LittleFS)',
+        relayTriggered: isAuthorized,
+        buzzerBeeps: isAuthorized ? 1 : 3,
+        syncedToFirestore: esp32Status.isOnline
+      };
+      setLogs(prev => [fallbackLog, ...prev]);
+    }
 
     setSimFeedback({
       isAuthorized,
@@ -49,8 +87,8 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
   };
 
   const filteredLogs = logs.filter(log =>
-    log.holderName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.uid.toLowerCase().includes(searchTerm.toLowerCase())
+    (log.holderName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (log.uid || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const pendingCount = logs.filter(l => !l.syncedToFirestore).length;
@@ -66,7 +104,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
             </div>
             <div>
               <h2 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#f8fafc' }}>Turnike Kart Okutma Simülatörü</h2>
-              <p style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Sistemdeki kartlar ile geçiş yapmayı test edin.</p>
+              <p style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Sistemdeki kartlar ile canlı geçiş yapmayı test edin.</p>
             </div>
           </div>
 
@@ -90,11 +128,15 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
               onChange={(e) => setSelectedCardId(e.target.value)}
               className="form-select"
             >
-              {cards.map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.holderName} ({c.uid}) - [{c.status}]
-                </option>
-              ))}
+              {cards.length === 0 ? (
+                <option value="">(Henüz Kart Yok - Kart Ekleyin)</option>
+              ) : (
+                cards.map(c => (
+                  <option key={c.id || c.uid} value={c.id || c.uid}>
+                    {c.holderName} ({c.uid}) - [{c.status}]
+                  </option>
+                ))
+              )}
             </select>
           </div>
 
@@ -184,36 +226,44 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
               </tr>
             </thead>
             <tbody>
-              {filteredLogs.map(log => (
-                <tr key={log.id}>
-                  <td style={{ fontSize: '0.78rem', color: '#94a3b8', fontFamily: 'var(--font-mono)' }}>
-                    {log.timestamp}
-                  </td>
-                  <td style={{ fontWeight: 600, color: '#f8fafc' }}>{log.holderName}</td>
-                  <td>
-                    <span className="form-input-mono" style={{ fontSize: '0.78rem', padding: '2px 6px', background: '#0f172a', borderRadius: '4px', color: '#818cf8' }}>
-                      {log.uid}
-                    </span>
-                  </td>
-                  <td style={{ fontSize: '0.82rem', color: '#cbd5e1' }}>{log.gate}</td>
-                  <td style={{ fontSize: '0.78rem', fontWeight: 700, color: log.direction === 'Giriş' ? '#34d399' : '#60a5fa' }}>
-                    {log.direction}
-                  </td>
-                  <td>
-                    <span className={log.relayTriggered ? 'badge badge-active' : 'badge badge-blocked'}>
-                      {log.relayTriggered ? '🔓 Açık (1 Bip)' : '🔒 Kapalı (3 Bip)'}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={log.mode.includes('Online') ? 'badge badge-online' : 'badge badge-offline'}>
-                      {log.mode}
-                    </span>
-                  </td>
-                  <td style={{ fontSize: '0.78rem', color: log.syncedToFirestore ? '#34d399' : '#fbbf24' }}>
-                    {log.syncedToFirestore ? 'Tamamlandı' : 'pendingLogs.json'}
+              {filteredLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={8} style={{ textAlign: 'center', color: '#94a3b8', padding: '20px' }}>
+                    Henüz geçiş kaydı bulunmuyor. Turnikede kart okutun veya yukarıdan Giriş/Çıkış yapın.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredLogs.map(log => (
+                  <tr key={log.id}>
+                    <td style={{ fontSize: '0.78rem', color: '#94a3b8', fontFamily: 'var(--font-mono)' }}>
+                      {log.timestamp}
+                    </td>
+                    <td style={{ fontWeight: 600, color: '#f8fafc' }}>{log.holderName}</td>
+                    <td>
+                      <span className="form-input-mono" style={{ fontSize: '0.78rem', padding: '2px 6px', background: '#0f172a', borderRadius: '4px', color: '#818cf8' }}>
+                        {log.uid}
+                      </span>
+                    </td>
+                    <td style={{ fontSize: '0.82rem', color: '#cbd5e1' }}>{log.gate}</td>
+                    <td style={{ fontSize: '0.78rem', fontWeight: 700, color: log.direction === 'Giriş' ? '#34d399' : '#60a5fa' }}>
+                      {log.direction}
+                    </td>
+                    <td>
+                      <span className={log.relayTriggered ? 'badge badge-active' : 'badge badge-blocked'}>
+                        {log.relayTriggered ? '🔓 Açık (1 Bip)' : '🔒 Kapalı (3 Bip)'}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={log.mode && log.mode.includes('Online') ? 'badge badge-online' : 'badge badge-offline'}>
+                        {log.mode || 'Online (API)'}
+                      </span>
+                    </td>
+                    <td style={{ fontSize: '0.78rem', color: log.syncedToFirestore ? '#34d399' : '#fbbf24' }}>
+                      {log.syncedToFirestore ? 'Tamamlandı' : 'pendingLogs.json'}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
