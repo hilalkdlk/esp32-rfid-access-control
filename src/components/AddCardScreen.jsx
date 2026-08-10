@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import confetti from 'canvas-confetti';
-import { RefreshCw, ArrowRight, Sparkles, AlertCircle, CheckCircle2, PlusCircle, ShieldCheck, DoorClosed, GraduationCap, Briefcase } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { RefreshCw, ArrowRight, Sparkles, AlertCircle, CheckCircle2, PlusCircle, ShieldCheck, DoorClosed, GraduationCap, Briefcase, FileSpreadsheet, Upload, X, Download } from 'lucide-react';
 import { DEPARTMENTS, FACULTIES, STUDENT_DEPARTMENTS, GATES } from '../data/initialData';
+import { exportSampleTemplate } from '../utils/exportUtils';
 
 export default function AddCardScreen({ onAddCard, onNavigateToLogs, cards = [] }) {
   // Card Type Selector: 'Öğrenci' | 'Personel' (Default: Öğrenci)
@@ -26,6 +28,12 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs, cards = [] 
   const [status, setStatus] = useState('Aktif');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Bulk Import State
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkParsedCards, setBulkParsedCards] = useState([]);
+  const [bulkError, setBulkError] = useState('');
+  const [bulkSuccessMsg, setBulkSuccessMsg] = useState('');
 
   const generateRandomUID = () => {
     const hex = () => Math.floor(Math.random() * 256).toString(16).toUpperCase().padStart(2, '0');
@@ -57,7 +65,6 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs, cards = [] 
 
   // Strict Form Validation & Duplicate UID Check Logic
   const validateForm = () => {
-    // 1. RFID Card UID Validation (Boşluksuz Tam 8 Karakter HEX: Örn: E49A1277)
     const cleanUid = uid.replace(/\s+/g, '').trim().toUpperCase();
     const uidRegex = /^[0-9A-F]{8}$/i;
     if (!uidRegex.test(cleanUid)) {
@@ -65,14 +72,12 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs, cards = [] 
       return false;
     }
 
-    // 2. MÜKERRER KART (DUPLICATE UID) KONTROLÜ
     const existingCard = cards.find(c => c.uid && c.uid.replace(/\s+/g, '').toUpperCase() === cleanUid);
     if (existingCard) {
       setErrorMsg(`⚠️ Bu RFID Kart UID numarası (${cleanUid}) zaten '${existingCard.holderName}' adlı kullanıcıya tanımlı! Aynı kart tekrar kaydedilemez.`);
       return false;
     }
 
-    // 3. Holder Name Validation
     const cleanName = holderName.trim();
     if (!cleanName || cleanName.length < 3) {
       setErrorMsg('Kart sahibinin adı ve soyadı en az 3 karakter olmalıdır.');
@@ -84,24 +89,20 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs, cards = [] 
       return false;
     }
 
-    // 4. Student No vs Staff ID Validation
     const cleanId = employeeId.trim();
     if (cardType === 'Öğrenci') {
-      // Must be EXACTLY 10 digits
       const digitsOnly = cleanId.replace(/\D/g, '');
       if (digitsOnly.length !== 10 || cleanId.length !== 10) {
         setErrorMsg('Öğrenci numarası TAM 10 HANELİ rakamdan oluşmalıdır. (Örn: 2026010402)');
         return false;
       }
     } else {
-      // Staff Sicil / T.C. No validation
       if (cleanId.length < 4) {
         setErrorMsg('Personel Sicil / T.C. numarası en az 4 karakter olmalıdır.');
         return false;
       }
     }
 
-    // 5. Gate selection check
     if (selectedGates.length === 0) {
       setErrorMsg('Lütfen en az 1 adet erişim kapısı izni seçiniz.');
       return false;
@@ -113,7 +114,6 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs, cards = [] 
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Execute Validation & Duplicate Check
     if (!validateForm()) {
       return;
     }
@@ -158,21 +158,133 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs, cards = [] 
     }, 400);
   };
 
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setBulkError('');
+    setBulkSuccessMsg('');
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsName = wb.SheetNames[0];
+        const ws = wb.Sheets[wsName];
+        const rawData = XLSX.utils.sheet_to_json(ws);
+
+        if (rawData.length === 0) {
+          setBulkError('Yüklenen Excel dosyasında hiç veri bulunamadı.');
+          return;
+        }
+
+        const validCards = [];
+        let skippedCount = 0;
+
+        rawData.forEach((row, index) => {
+          const rawUid = row['UID (8 HEX)'] || row['UID'] || row['uid'] || '';
+          const cleanUid = String(rawUid).replace(/\s+/g, '').trim().toUpperCase();
+
+          const rawName = row['Ad Soyad'] || row['holderName'] || '';
+          const cleanName = String(rawName).trim();
+
+          const type = row['Kullanıcı Türü'] || row['cardType'] || 'Personel';
+          const empId = String(row['Öğrenci/Sicil No'] || row['employeeId'] || '2026000000');
+          const fac = row['Fakülte'] || 'N/A';
+          const dept = row['Bölüm / Birim'] || row['department'] || 'Genel';
+          const rawGates = row['Yetkili Kapılar'] || 'Ana Giriş Turnikesi';
+
+          let gatesArr = ["Ana Giriş Turnikesi"];
+          if (String(rawGates).includes("Tüm Kapılar")) {
+            gatesArr = ["Tüm Kapılar / Yönetici"];
+          } else if (String(rawGates).includes(',')) {
+            gatesArr = String(rawGates).split(',').map(g => g.trim());
+          } else {
+            gatesArr = [String(rawGates).trim()];
+          }
+
+          // Validation
+          const isHex8 = /^[0-9A-F]{8}$/i.test(cleanUid);
+          const isDuplicateInCurrent = cards.some(c => c.uid && c.uid.replace(/\s+/g, '').toUpperCase() === cleanUid);
+          const isDuplicateInBatch = validCards.some(c => c.uid === cleanUid);
+
+          if (isHex8 && cleanName && !isDuplicateInCurrent && !isDuplicateInBatch) {
+            validCards.push({
+              id: `bulk-${Date.now()}-${index}`,
+              uid: cleanUid,
+              holderName: cleanName,
+              cardType: type,
+              employeeId: empId,
+              faculty: fac,
+              department: dept,
+              accessLevel: gatesArr.join(', '),
+              allowedGates: gatesArr,
+              status: 'Aktif',
+              issueDate: new Date().toISOString().split('T')[0],
+              expiryDate: '2026-12-31',
+              syncedToESP32: true
+            });
+          } else {
+            skippedCount++;
+          }
+        });
+
+        if (validCards.length === 0) {
+          setBulkError('Dosyadaki tüm UID numaraları ya geçersiz (8 HEX değil) ya da veritabanında zaten kayıtlı!');
+        } else {
+          setBulkParsedCards(validCards);
+          setBulkSuccessMsg(`${validCards.length} adet geçerli kart okundu. ${skippedCount > 0 ? `(${skippedCount} hatalı/mükerrer kayıt atlandı)` : ''}`);
+        }
+      } catch (err) {
+        setBulkError('Excel/CSV dosyası okunurken hata oluştu. Lütfen şablona uygun bir dosya yükleyin.');
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const handleSaveBulkImport = () => {
+    if (bulkParsedCards.length === 0) return;
+
+    bulkParsedCards.forEach(card => {
+      onAddCard(card);
+    });
+
+    setShowBulkModal(false);
+    setBulkParsedCards([]);
+    setBulkSuccessMsg('');
+    
+    try {
+      confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
+    } catch (err) {}
+  };
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', width: '100%' }}>
       {/* Left Column: Form */}
       <div className="glass-panel" style={{ padding: '20px', background: '#162038' }}>
-        <div style={{ marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ padding: '10px', background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#ffffff', borderRadius: '10px', display: 'flex' }}>
-            <Sparkles size={22} />
+        <div style={{ marginBottom: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ padding: '10px', background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#ffffff', borderRadius: '10px', display: 'flex' }}>
+              <Sparkles size={22} />
+            </div>
+            <div>
+              <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc' }}>Yeni RFID Kart Tanımlama</h2>
+              <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>Gelişmiş veri doğrulama ve mükerrer UID kontrollü kayıt formu.</p>
+            </div>
           </div>
-          <div>
-            <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc' }}>Yeni RFID Kart Tanımlama</h2>
-            <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>Gelişmiş veri doğrulama ve mükerrer UID kontrollü kayıt formu.</p>
-          </div>
+
+          <button 
+            type="button"
+            onClick={() => setShowBulkModal(true)}
+            className="btn btn-secondary btn-sm"
+            style={{ fontSize: '0.78rem', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '6px', borderColor: '#38bdf8', color: '#38bdf8' }}
+          >
+            <FileSpreadsheet size={15} /> Toplu Kart Yükle (Excel)
+          </button>
         </div>
 
-        {/* Card Type Selector (Clean without emojis) */}
+        {/* Card Type Selector */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '18px' }}>
           <button
             type="button"
@@ -349,7 +461,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs, cards = [] 
             </>
           )}
 
-          {/* Multi-Select Gate Access Pills Matrix (Primary Sky Cyan Palette) */}
+          {/* Multi-Select Gate Access Pills Matrix */}
           <div className="form-group" style={{ marginTop: '12px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
               <label className="form-label" style={{ margin: 0 }}>
@@ -473,6 +585,137 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs, cards = [] 
           </button>
         </div>
       </div>
+
+      {/* TOPLU KART YÜKLEME (BULK IMPORT EXCEL/CSV) MODALI */}
+      {showBulkModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.78)',
+          backdropFilter: 'blur(6px)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div className="glass-panel" style={{
+            width: '100%',
+            maxWidth: '680px',
+            background: '#162038',
+            border: '1px solid #38bdf8',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.8), 0 0 25px rgba(56,189,248,0.3)',
+            padding: '24px',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #293859', paddingBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <FileSpreadsheet size={22} color="#38bdf8" />
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc' }}>
+                  Excel / CSV İle Toplu Kullanıcı Yükleme
+                </h3>
+              </div>
+              <button 
+                onClick={() => setShowBulkModal(false)}
+                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Template Download Option */}
+            <div style={{ background: '#0b1329', border: '1px solid #293859', padding: '14px 18px', borderRadius: '10px', marginBottom: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <div style={{ fontWeight: 700, color: '#f8fafc', fontSize: '0.88rem' }}>Örnek Şablon Hazır</div>
+                <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>Toplu kayıt eklemeden önce formatı görmek için şablon dosyasını indirin.</div>
+              </div>
+              <button 
+                onClick={exportSampleTemplate}
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: '0.78rem', padding: '7px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Download size={14} /> Şablonu İndir (.xlsx)
+              </button>
+            </div>
+
+            {/* File Drop / Select Area */}
+            <div style={{ border: '2px dashed #38bdf8', background: 'rgba(56, 189, 248, 0.05)', padding: '24px', borderRadius: '12px', textAlign: 'center', marginBottom: '18px' }}>
+              <Upload size={32} color="#38bdf8" style={{ marginBottom: '8px' }} />
+              <div style={{ fontWeight: 700, color: '#ffffff', fontSize: '0.92rem' }}>Excel veya CSV Dosyasını Buraya Yükleyin</div>
+              <div style={{ fontSize: '0.76rem', color: '#94a3b8', marginTop: '4px', marginBottom: '14px' }}>Desteklenen Formatlar: .xlsx, .xls, .csv</div>
+              <label className="btn btn-primary" style={{ padding: '8px 18px', fontSize: '0.84rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <FileSpreadsheet size={16} /> Dosya Seç
+                <input 
+                  type="file" 
+                  accept=".xlsx, .xls, .csv"
+                  onChange={handleFileUpload}
+                  style={{ display: 'none' }}
+                />
+              </label>
+            </div>
+
+            {/* Error or Success Feedback */}
+            {bulkError && (
+              <div style={{ padding: '12px 16px', background: 'rgba(244, 63, 94, 0.15)', border: '1px solid rgba(244, 63, 94, 0.4)', borderRadius: '8px', color: '#fb7185', fontSize: '0.84rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <AlertCircle size={18} />
+                <span>{bulkError}</span>
+              </div>
+            )}
+
+            {bulkSuccessMsg && (
+              <div style={{ padding: '12px 16px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.4)', borderRadius: '8px', color: '#34d399', fontSize: '0.84rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <CheckCircle2 size={18} />
+                <span style={{ fontWeight: 700 }}>{bulkSuccessMsg}</span>
+              </div>
+            )}
+
+            {/* Preview Parsed Cards Table */}
+            {bulkParsedCards.length > 0 && (
+              <div>
+                <h4 style={{ fontSize: '0.9rem', fontWeight: 800, color: '#f8fafc', marginBottom: '10px' }}>
+                  Kaydedilmeye Hazır Kartlar ({bulkParsedCards.length} Adet):
+                </h4>
+                <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid #293859', borderRadius: '8px', marginBottom: '18px' }}>
+                  <table className="custom-table" style={{ fontSize: '0.78rem' }}>
+                    <thead>
+                      <tr>
+                        <th>UID</th>
+                        <th>Ad Soyad</th>
+                        <th>Tür</th>
+                        <th>Birim / Bölüm</th>
+                        <th>Yetkili Kapılar</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bulkParsedCards.map((c, idx) => (
+                        <tr key={idx}>
+                          <td style={{ fontFamily: 'var(--font-mono)', color: '#38bdf8', fontWeight: 700 }}>{c.uid}</td>
+                          <td style={{ fontWeight: 700, color: '#ffffff' }}>{c.holderName}</td>
+                          <td>{c.cardType}</td>
+                          <td>{c.department}</td>
+                          <td style={{ color: '#34d399' }}>{c.accessLevel}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <button 
+                  onClick={handleSaveBulkImport}
+                  className="btn btn-success"
+                  style={{ width: '100%', padding: '12px', fontSize: '0.92rem', fontWeight: 800 }}
+                >
+                  ⚡ Toplam {bulkParsedCards.length} Kartı Sisteme & Firestore'a Ekle
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

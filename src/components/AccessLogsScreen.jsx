@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, HardDrive, ShieldCheck, ShieldAlert, Volume2, Search, DoorClosed, FileSpreadsheet, FileText, Download, CreditCard } from 'lucide-react';
+import { Zap, HardDrive, ShieldCheck, ShieldAlert, Volume2, Search, DoorClosed, FileSpreadsheet, FileText, Download, CreditCard, Calendar, Filter, RotateCcw } from 'lucide-react';
 import { GATES } from '../data/initialData';
 import { exportToExcel, exportToPDF, exportToCSV } from '../utils/exportUtils';
 
@@ -27,7 +27,12 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
   const [selectedCardId, setSelectedCardId] = useState(selectedCardForSim || cards[0]?.id || cards[0]?.uid || '');
   const [selectedGate, setSelectedGate] = useState(GATES[0]);
   const [simFeedback, setSimFeedback] = useState(null);
+  
+  // Search & Date Range Filter States
   const [searchTerm, setSearchTerm] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL' | 'AUTHORIZED' | 'UNAUTHORIZED'
 
   // Automatically pre-select the card and its permitted gate when clicked from List Screen or Add Screen
   useEffect(() => {
@@ -158,17 +163,70 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
     }, 4500);
   };
 
-  // STRICT CHRONOLOGICAL SORTING: Always sort purely by timestamp descending (newest first, regardless of status)
+  // Quick Date Shortcut Filters (Bugün, Dün, Bu Hafta)
+  const setQuickDate = (type) => {
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+
+    if (type === 'today') {
+      setStartDate(todayStr);
+      setEndDate(todayStr);
+    } else if (type === 'yesterday') {
+      const y = new Date(now);
+      y.setDate(y.getDate() - 1);
+      const yStr = y.toISOString().split('T')[0];
+      setStartDate(yStr);
+      setEndDate(yStr);
+    } else if (type === 'week') {
+      const w = new Date(now);
+      w.setDate(w.getDate() - 7);
+      setStartDate(w.toISOString().split('T')[0]);
+      setEndDate(todayStr);
+    } else {
+      setStartDate('');
+      setEndDate('');
+      setStatusFilter('ALL');
+      setSearchTerm('');
+    }
+  };
+
+  // STRICT CHRONOLOGICAL SORTING: Always sort purely by timestamp descending (newest first)
   const sortedLogs = [...logs].sort((a, b) => {
     const timeA = new Date(a.timestamp).getTime() || 0;
     const timeB = new Date(b.timestamp).getTime() || 0;
     return timeB - timeA;
   });
 
-  const filteredLogs = sortedLogs.filter(log =>
-    (log.holderName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (log.gate || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Comprehensive Date Range & Status & Name Search Filter Logic
+  const filteredLogs = sortedLogs.filter(log => {
+    // 1. Text Search (Holder Name or Gate)
+    const matchesSearch = (log.holderName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (log.gate || '').toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (!matchesSearch) return false;
+
+    // 2. Status Filter
+    if (statusFilter === 'AUTHORIZED' && (!log.relayTriggered && (!log.status || !log.status.includes('Yetkili')))) {
+      return false;
+    }
+    if (statusFilter === 'UNAUTHORIZED' && (log.relayTriggered || (log.status && log.status.includes('Yetkili')))) {
+      return false;
+    }
+
+    // 3. Date Range Filter
+    if (startDate || endDate) {
+      try {
+        const logDateObj = new Date(log.timestamp);
+        if (!isNaN(logDateObj.getTime())) {
+          const logDateStr = logDateObj.toISOString().split('T')[0];
+          if (startDate && logDateStr < startDate) return false;
+          if (endDate && logDateStr > endDate) return false;
+        }
+      } catch (err) {}
+    }
+
+    return true;
+  });
 
   const pendingCount = logs.filter(l => !l.syncedToFirestore).length;
 
@@ -281,11 +339,102 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
         )}
       </div>
 
+      {/* Advanced Date Range & Status Filter Bar */}
+      <div className="glass-panel" style={{ padding: '16px 20px', background: '#162038', border: '1px solid #293859' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Filter size={18} color="#38bdf8" />
+            <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#f8fafc' }}>Gelişmiş Tarih & Durum Filtresi:</span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            {/* Start Date */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Calendar size={15} color="#94a3b8" />
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="form-input"
+                style={{ fontSize: '0.8rem', padding: '6px 10px', width: '135px' }}
+                title="Başlangıç Tarihi"
+              />
+            </div>
+
+            <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>-</span>
+
+            {/* End Date */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="form-input"
+                style={{ fontSize: '0.8rem', padding: '6px 10px', width: '135px' }}
+                title="Bitiş Tarihi"
+              />
+            </div>
+
+            {/* Status Select */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="form-select"
+              style={{ fontSize: '0.8rem', padding: '6px 10px', width: '150px' }}
+            >
+              <option value="ALL">Tüm Durumlar</option>
+              <option value="AUTHORIZED">🟢 Sadece Yetkili</option>
+              <option value="UNAUTHORIZED">🔴 Sadece Yetkisiz / Red</option>
+            </select>
+
+            {/* Quick Shortcuts */}
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <button 
+                onClick={() => setQuickDate('today')}
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: '0.74rem', padding: '5px 9px' }}
+              >
+                Bugün
+              </button>
+              <button 
+                onClick={() => setQuickDate('yesterday')}
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: '0.74rem', padding: '5px 9px' }}
+              >
+                Dün
+              </button>
+              <button 
+                onClick={() => setQuickDate('week')}
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: '0.74rem', padding: '5px 9px' }}
+              >
+                Bu Hafta
+              </button>
+              {(startDate || endDate || statusFilter !== 'ALL' || searchTerm) && (
+                <button 
+                  onClick={() => setQuickDate('clear')}
+                  className="btn btn-secondary btn-sm"
+                  style={{ fontSize: '0.74rem', padding: '5px 9px', color: '#fb7185', display: 'flex', alignItems: 'center', gap: '3px' }}
+                  title="Tüm filtreleri temizle"
+                >
+                  <RotateCcw size={12} /> Temizle
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Access Logs Table - Strict Chronological Order & Export Rapor Buttons */}
       <div className="glass-panel" style={{ padding: '20px', background: '#162038' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '16px' }}>
           <div>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc' }}>Giriş Logları Listesi</h3>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc' }}>
+              Giriş Logları Listesi
+              <span style={{ fontSize: '0.82rem', color: '#38bdf8', fontWeight: 600, marginLeft: '10px' }}>
+                ({filteredLogs.length} Kayıt Listeleniyor)
+              </span>
+            </h3>
             <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>Turnikelerden geçen kullanıcıların kronolojik zaman sıralı dökümü (En yeni en üstte).</p>
           </div>
 
@@ -296,7 +445,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
                 onClick={() => exportToExcel(filteredLogs, 'Giris_Loglari')}
                 className="btn btn-success btn-sm"
                 style={{ fontSize: '0.78rem', padding: '7px 12px', display: 'flex', alignItems: 'center', gap: '5px' }}
-                title="Giriş loglarını Excel (.xlsx) olarak indir"
+                title="Filtreli giriş loglarını Excel (.xlsx) olarak indir"
               >
                 <FileSpreadsheet size={15} /> Excel İndir
               </button>
@@ -305,7 +454,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
                 onClick={() => exportToPDF(filteredLogs, 'ESP32 Akıllı Kartlı Geçiş Kontrol Raporu')}
                 className="btn btn-primary btn-sm"
                 style={{ fontSize: '0.78rem', padding: '7px 12px', display: 'flex', alignItems: 'center', gap: '5px' }}
-                title="Giriş loglarını PDF (.pdf) olarak indir"
+                title="Filtreli giriş loglarını PDF (.pdf) olarak indir"
               >
                 <FileText size={15} /> PDF İndir
               </button>
@@ -314,7 +463,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
                 onClick={() => exportToCSV(filteredLogs, 'Giris_Loglari')}
                 className="btn btn-secondary btn-sm"
                 style={{ fontSize: '0.78rem', padding: '7px 12px', display: 'flex', alignItems: 'center', gap: '5px' }}
-                title="Giriş loglarını CSV olarak indir"
+                title="Filtreli giriş loglarını CSV olarak indir"
               >
                 <Download size={15} /> CSV
               </button>
@@ -350,7 +499,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
               {filteredLogs.length === 0 ? (
                 <tr>
                   <td colSpan={6} style={{ textAlign: 'center', color: '#cbd5e1', padding: '30px' }}>
-                    Henüz giriş kaydı bulunmuyor. Turnikede kart okutun veya yukarıdan kart okutun.
+                    Seçilen filtrelere uygun giriş kaydı bulunamadı.
                   </td>
                 </tr>
               ) : (
