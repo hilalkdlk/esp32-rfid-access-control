@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, HardDrive, ShieldCheck, ShieldAlert, Volume2, Search, ArrowUpRight, ArrowDownLeft, DoorClosed } from 'lucide-react';
+import { Zap, HardDrive, ShieldCheck, ShieldAlert, Volume2, Search, DoorClosed, FileSpreadsheet, FileText, Download, CreditCard } from 'lucide-react';
 import { GATES } from '../data/initialData';
+import { exportToExcel, exportToPDF, exportToCSV } from '../utils/exportUtils';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -56,11 +57,12 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
     }
   };
 
-  const handleSimulateTap = async (direction) => {
+  const handleSimulateTap = async () => {
     const targetCard = cards.find(c => c.id === selectedCardId || c.uid === selectedCardId);
     const cardUid = targetCard ? targetCard.uid : (selectedCardId || 'FF FF FF FF');
     const holderName = targetCard ? targetCard.holderName : 'Tanımlanmamış Yabancı Kullanıcı';
     const activeGate = selectedGate || GATES[0];
+    const direction = 'Giriş';
     
     // 1. Kart Durumu Aktif mi?
     const isActive = targetCard && targetCard.status === 'Aktif';
@@ -145,7 +147,6 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
       hasGatePermission,
       isActive,
       holderName,
-      direction,
       gate: activeGate,
       statusText,
       isOnline: esp32Status.isOnline,
@@ -202,8 +203,8 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
           )}
         </div>
 
-        {/* Controls - Omit UID from dropdown options */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', alignItems: 'end' }}>
+        {/* Controls - Balanced Button Height & Typography */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', alignItems: 'end' }}>
           <div>
             <label className="form-label">Okutulacak Kullanıcı</label>
             <select
@@ -239,12 +240,9 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
             </select>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={() => handleSimulateTap('Giriş')} className="btn btn-success" style={{ flex: 1 }}>
-              <ArrowDownLeft size={16} /> GİRİŞ YAP
-            </button>
-            <button onClick={() => handleSimulateTap('Çıkış')} className="btn btn-primary" style={{ flex: 1 }}>
-              <ArrowUpRight size={16} /> ÇIKIŞ YAP
+          <div>
+            <button onClick={handleSimulateTap} className="btn btn-success" style={{ width: '100%', padding: '9px 14px', fontSize: '0.84rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              <CreditCard size={16} /> Kart Okut (Kapı Geçişi Yap)
             </button>
           </div>
         </div>
@@ -283,24 +281,56 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
         )}
       </div>
 
-      {/* Access Logs Table - Strict Chronological Order */}
+      {/* Access Logs Table - Strict Chronological Order & Export Rapor Buttons */}
       <div className="glass-panel" style={{ padding: '20px', background: '#162038' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '16px' }}>
           <div>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc' }}>Geçiş Kayıtları Log Listesi</h3>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc' }}>Giriş Logları Listesi</h3>
             <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>Turnikelerden geçen kullanıcıların kronolojik zaman sıralı dökümü (En yeni en üstte).</p>
           </div>
 
-          <div style={{ position: 'relative', width: '240px' }}>
-            <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#cbd5e1' }} />
-            <input
-              type="text"
-              placeholder="İsim veya Kapı Ara..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="form-input"
-              style={{ paddingLeft: '36px', fontSize: '0.84rem' }}
-            />
+          {/* Export Rapor Buttons & Search Bar */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button 
+                onClick={() => exportToExcel(filteredLogs, 'Giris_Loglari')}
+                className="btn btn-success btn-sm"
+                style={{ fontSize: '0.78rem', padding: '7px 12px', display: 'flex', alignItems: 'center', gap: '5px' }}
+                title="Giriş loglarını Excel (.xlsx) olarak indir"
+              >
+                <FileSpreadsheet size={15} /> Excel İndir
+              </button>
+
+              <button 
+                onClick={() => exportToPDF(filteredLogs, 'ESP32 Akıllı Kartlı Geçiş Kontrol Raporu')}
+                className="btn btn-primary btn-sm"
+                style={{ fontSize: '0.78rem', padding: '7px 12px', display: 'flex', alignItems: 'center', gap: '5px' }}
+                title="Giriş loglarını PDF (.pdf) olarak indir"
+              >
+                <FileText size={15} /> PDF İndir
+              </button>
+
+              <button 
+                onClick={() => exportToCSV(filteredLogs, 'Giris_Loglari')}
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: '0.78rem', padding: '7px 12px', display: 'flex', alignItems: 'center', gap: '5px' }}
+                title="Giriş loglarını CSV olarak indir"
+              >
+                <Download size={15} /> CSV
+              </button>
+            </div>
+
+            <div style={{ position: 'relative', width: '200px' }}>
+              <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#cbd5e1' }} />
+              <input
+                type="text"
+                placeholder="İsim veya Kapı Ara..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="form-input"
+                style={{ paddingLeft: '36px', fontSize: '0.84rem' }}
+              />
+            </div>
           </div>
         </div>
 
@@ -311,7 +341,6 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
                 <th>Tarih & Saat (TRT)</th>
                 <th>Kullanıcı Ad Soyad</th>
                 <th>Kapı</th>
-                <th>Yön</th>
                 <th>Geçiş Durumu / Sonuç</th>
                 <th>Röle & Buzzer</th>
                 <th>Firestore</th>
@@ -320,8 +349,8 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
             <tbody>
               {filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', color: '#cbd5e1', padding: '30px' }}>
-                    Henüz geçiş kaydı bulunmuyor. Turnikede kart okutun veya yukarıdan Giriş/Çıkış yapın.
+                  <td colSpan={6} style={{ textAlign: 'center', color: '#cbd5e1', padding: '30px' }}>
+                    Henüz giriş kaydı bulunmuyor. Turnikede kart okutun veya yukarıdan kart okutun.
                   </td>
                 </tr>
               ) : (
@@ -334,9 +363,6 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
                     <td style={{ fontSize: '0.82rem', color: '#38bdf8', fontWeight: 700 }}>
                       <DoorClosed size={12} style={{ display: 'inline', marginRight: '4px' }} />
                       {log.gate}
-                    </td>
-                    <td style={{ fontSize: '0.78rem', fontWeight: 700, color: log.direction === 'Giriş' ? '#34d399' : '#60a5fa' }}>
-                      {log.direction}
                     </td>
                     <td>
                       <span className={log.relayTriggered ? 'badge badge-online' : 'badge badge-offline'}>

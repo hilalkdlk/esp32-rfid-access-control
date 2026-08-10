@@ -465,7 +465,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs, cards = [] 
 
         <div className="glass-panel" style={{ padding: '18px 20px', background: '#162038', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#f8fafc' }}>Giriş-Çıkış Logları</div>
+            <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#f8fafc' }}>Giriş Logları</div>
             <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>Turnikede kart okutma simülatörü</div>
           </div>
           <button onClick={onNavigateToLogs} className="btn btn-secondary btn-sm" style={{ padding: '8px 14px' }}>

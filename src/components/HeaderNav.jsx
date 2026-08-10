@@ -5,7 +5,7 @@ export default function HeaderNav({ activeTab, setActiveTab, esp32Status, toggle
   const steps = [
     { id: 'list', label: '1. Kart Listeleme', icon: CreditCard, countInfo: `${esp32Status.cardsJsonCount || 0} Kart Kayıtlı` },
     { id: 'add', label: '2. Kart Ekleme', icon: UserPlus, countInfo: 'Yeni RFID Kaydı' },
-    { id: 'logs', label: '3. Giriş-Çıkış Logları', icon: FileText, countInfo: 'Canlı Turnike Logları' },
+    { id: 'logs', label: '3. Giriş Logları', icon: FileText, countInfo: 'Canlı Turnike Logları' },
     { id: 'analytics', label: '4. İstatistik & Analiz', icon: BarChart2, countInfo: 'Grafik ve Raporlar' }
   ];
 

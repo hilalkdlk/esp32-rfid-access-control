@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, CartesianGrid } from 'recharts';
-import { BarChart3, Activity, ShieldCheck, ShieldAlert, DoorClosed, Filter, X } from 'lucide-react';
+import { BarChart3, Activity, ShieldCheck, ShieldAlert, DoorClosed, Filter, X, FileSpreadsheet, FileText, Download } from 'lucide-react';
+import { exportToExcel, exportToPDF, exportToCSV } from '../utils/exportUtils';
 
 // Format timestamp to Turkey Local Time
 const formatTurkeyTimestamp = (ts) => {
@@ -230,7 +231,7 @@ export default function AnalyticsScreen({ cards = [], logs = [] }) {
       {/* 4. INTERACTIVE DRILL-DOWN TABLE WHEN GRAPH OR METRIC CARD IS CLICKED */}
       {selectedStatusFilter && (
         <div className="glass-panel" style={{ padding: '22px', background: '#162038', border: `2px solid ${selectedStatusFilter === 'Yetkili' ? '#34d399' : (selectedStatusFilter === 'Yetkisiz' ? '#fb7185' : '#38bdf8')}`, animation: 'pulseGlow 0.4s ease' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <Filter size={20} color={selectedStatusFilter === 'Yetkili' ? '#34d399' : (selectedStatusFilter === 'Yetkisiz' ? '#fb7185' : '#38bdf8')} />
               <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc' }}>
@@ -243,13 +244,40 @@ export default function AnalyticsScreen({ cards = [], logs = [] }) {
               </h3>
             </div>
 
-            <button 
-              onClick={() => setSelectedStatusFilter(null)}
-              className="btn btn-secondary btn-sm"
-              style={{ fontSize: '0.8rem', padding: '6px 14px' }}
-            >
-              <X size={14} /> Filtreyi Kaldır
-            </button>
+            {/* Export Rapor Buttons for Filtered Drill Down Table */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <button 
+                onClick={() => exportToExcel(activeDrillLogs, `Filtreli_Gecis_Raporu_${selectedStatusFilter}`)}
+                className="btn btn-success btn-sm"
+                style={{ fontSize: '0.78rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '5px' }}
+              >
+                <FileSpreadsheet size={15} /> Excel
+              </button>
+
+              <button 
+                onClick={() => exportToPDF(activeDrillLogs, `Geçiş Kontrol Raporu - ${selectedStatusFilter}`)}
+                className="btn btn-primary btn-sm"
+                style={{ fontSize: '0.78rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '5px' }}
+              >
+                <FileText size={15} /> PDF
+              </button>
+
+              <button 
+                onClick={() => exportToCSV(activeDrillLogs, `Filtreli_Gecis_Raporu_${selectedStatusFilter}`)}
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: '0.78rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '5px' }}
+              >
+                <Download size={15} /> CSV
+              </button>
+
+              <button 
+                onClick={() => setSelectedStatusFilter(null)}
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: '0.8rem', padding: '6px 14px' }}
+              >
+                <X size={14} /> Filtreyi Kaldır
+              </button>
+            </div>
           </div>
 
           <div style={{ overflowX: 'auto' }}>
@@ -259,7 +287,6 @@ export default function AnalyticsScreen({ cards = [], logs = [] }) {
                   <th>Tarih & Saat (TRT)</th>
                   <th>Kullanıcı Ad Soyad</th>
                   <th>Kapı</th>
-                  <th>Yön</th>
                   <th>Geçiş Durumu / Sonuç</th>
                   <th>Röle & Buzzer</th>
                 </tr>
@@ -267,7 +294,7 @@ export default function AnalyticsScreen({ cards = [], logs = [] }) {
               <tbody>
                 {activeDrillLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', color: '#cbd5e1', padding: '24px' }}>
+                    <td colSpan={5} style={{ textAlign: 'center', color: '#cbd5e1', padding: '24px' }}>
                       Bu kategoriye ait geçiş kaydı bulunamadı.
                     </td>
                   </tr>
@@ -281,9 +308,6 @@ export default function AnalyticsScreen({ cards = [], logs = [] }) {
                       <td style={{ fontSize: '0.82rem', color: '#38bdf8', fontWeight: 700 }}>
                         <DoorClosed size={12} style={{ display: 'inline', marginRight: '4px' }} />
                         {log.gate}
-                      </td>
-                      <td style={{ fontSize: '0.78rem', fontWeight: 700, color: log.direction === 'Giriş' ? '#34d399' : '#60a5fa' }}>
-                        {log.direction}
                       </td>
                       <td>
                         <span className={log.relayTriggered ? 'badge badge-online' : 'badge badge-offline'}>
