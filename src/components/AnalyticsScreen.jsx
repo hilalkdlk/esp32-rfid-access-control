@@ -222,10 +222,7 @@ export default function AnalyticsScreen({ cards = [], logs = [] }) {
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div style={{ fontSize: '0.72rem', color: '#94a3b8', textAlign: 'center', marginTop: '4px' }}>
-            👉 Tıklayarak listeyi süzebilirsiniz.
-          </div>
-        </div>
+      </div>
       </div>
 
       {/* 4. INTERACTIVE DRILL-DOWN TABLE WHEN GRAPH OR METRIC CARD IS CLICKED */}
