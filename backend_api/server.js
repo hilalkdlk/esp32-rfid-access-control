@@ -273,7 +273,7 @@ app.delete('/api/cards/:id', async (req, res) => {
 
 /**
  * ----------------------------------------------------------------------------
- * 7. GEÇİŞ LOGLARINI GÖRÜNTÜLEME ENDPOINT'İ (EN SON 100 LOG)
+ * 7. GEÇİŞ LOGLARINI GÖRÜNTÜLEME ENDPOINT'İ (TOLERANSLI KRONOLOJİK SIRALAMA)
  * ----------------------------------------------------------------------------
  * Yön: GET /api/logs
  */
@@ -281,6 +281,7 @@ app.get('/api/logs', async (req, res) => {
   try {
     const limitCount = parseInt(req.query.limit) || 100;
 
+    // Strict Chronological Order (Most recent timestamp on top)
     const snapshot = await db.collection('access_logs')
       .orderBy('timestamp', 'desc')
       .limit(limitCount)
@@ -292,6 +293,13 @@ app.get('/api/logs', async (req, res) => {
         id: doc.id,
         ...doc.data()
       });
+    });
+
+    // Safely sort chronologically in memory (Newest first)
+    logsList.sort((a, b) => {
+      const timeA = new Date(a.timestamp).getTime() || 0;
+      const timeB = new Date(b.timestamp).getTime() || 0;
+      return timeB - timeA;
     });
 
     res.json({

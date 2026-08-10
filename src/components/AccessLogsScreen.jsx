@@ -157,7 +157,14 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
     }, 4500);
   };
 
-  const filteredLogs = logs.filter(log =>
+  // STRICT CHRONOLOGICAL SORTING: Always sort purely by timestamp descending (newest first, regardless of status)
+  const sortedLogs = [...logs].sort((a, b) => {
+    const timeA = new Date(a.timestamp).getTime() || 0;
+    const timeB = new Date(b.timestamp).getTime() || 0;
+    return timeB - timeA;
+  });
+
+  const filteredLogs = sortedLogs.filter(log =>
     (log.holderName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (log.gate || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -218,7 +225,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
 
           <div>
             <label className="form-label" style={{ color: '#38bdf8', fontWeight: 700 }}>
-               Geçiş Yapılacak Kapı (Seçiniz):
+              Geçiş Yapılacak Kapı (Seçiniz):
             </label>
             <select
               value={selectedGate}
@@ -276,12 +283,12 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
         )}
       </div>
 
-      {/* Access Logs Table - Omit UID Column */}
+      {/* Access Logs Table - Strict Chronological Order */}
       <div className="glass-panel" style={{ padding: '20px', background: '#162038' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
           <div>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc' }}>Geçiş Kayıtları Log Listesi</h3>
-            <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>Turnikelerden geçen kullanıcıların hareket dökümü (Türkiye Yerel Saati: UTC+3).</p>
+            <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>Turnikelerden geçen kullanıcıların kronolojik zaman sıralı dökümü (En yeni en üstte).</p>
           </div>
 
           <div style={{ position: 'relative', width: '240px' }}>
