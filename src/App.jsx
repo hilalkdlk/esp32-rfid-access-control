@@ -3,6 +3,7 @@ import HeaderNav from './components/HeaderNav';
 import CardListScreen from './components/CardListScreen';
 import AddCardScreen from './components/AddCardScreen';
 import AccessLogsScreen from './components/AccessLogsScreen';
+import AnalyticsScreen from './components/AnalyticsScreen';
 import { INITIAL_ESP32_STATUS } from './data/initialData';
 import { CheckCircle, AlertTriangle } from 'lucide-react';
 
@@ -10,7 +11,7 @@ import { CheckCircle, AlertTriangle } from 'lucide-react';
 const API_BASE = 'http://localhost:5000/api';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('list'); // 'list' | 'add' | 'logs'
+  const [activeTab, setActiveTab] = useState('list'); // 'list' | 'add' | 'logs' | 'analytics'
   const [cards, setCards] = useState([]);
   const [logs, setLogs] = useState([]);
   const [esp32Status, setEsp32Status] = useState(INITIAL_ESP32_STATUS);
@@ -305,6 +306,14 @@ export default function App() {
           toggleESP32Online={toggleESP32Online}
           syncPendingLogs={syncPendingLogs}
           selectedCardForSim={selectedCardForSim}
+        />
+      )}
+
+      {/* Screen 4: İstatistik & Analiz */}
+      {activeTab === 'analytics' && (
+        <AnalyticsScreen 
+          cards={cards}
+          logs={logs}
         />
       )}
     </div>

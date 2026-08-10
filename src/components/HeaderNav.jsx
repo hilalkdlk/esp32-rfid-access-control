@@ -1,11 +1,12 @@
 import React from 'react';
-import { CreditCard, UserPlus, FileText, Wifi, WifiOff, Cpu } from 'lucide-react';
+import { CreditCard, UserPlus, FileText, BarChart2, Wifi, WifiOff, Cpu } from 'lucide-react';
 
 export default function HeaderNav({ activeTab, setActiveTab, esp32Status, toggleESP32Online }) {
   const steps = [
     { id: 'list', label: '1. Kart Listeleme', icon: CreditCard, countInfo: `${esp32Status.cardsJsonCount || 0} Kart Kayıtlı` },
     { id: 'add', label: '2. Kart Ekleme', icon: UserPlus, countInfo: 'Yeni RFID Kaydı' },
-    { id: 'logs', label: '3. Giriş-Çıkış Logları', icon: FileText, countInfo: 'Canlı Turnike Logları' }
+    { id: 'logs', label: '3. Giriş-Çıkış Logları', icon: FileText, countInfo: 'Canlı Turnike Logları' },
+    { id: 'analytics', label: '4. İstatistik & Analiz', icon: BarChart2, countInfo: 'Grafik ve Raporlar' }
   ];
 
   return (
@@ -49,8 +50,8 @@ export default function HeaderNav({ activeTab, setActiveTab, esp32Status, toggle
         </div>
       </div>
 
-      {/* 3-Step Navigation Bar with Standard Heights & Cyan Glow */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+      {/* 4-Step Navigation Bar */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
         {steps.map((step) => {
           const Icon = step.icon;
           const isActive = activeTab === step.id;
