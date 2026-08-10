@@ -166,7 +166,9 @@ void loop() {
 void setupHardware() {
   pinMode(RELAY_PIN, OUTPUT);
   pinMode(BUZZER_PIN, OUTPUT);
-  digitalWrite(RELAY_PIN, LOW);   // Röle Başlangıçta Kapılı (Kilitli)
+  
+  // Active-Low Röle Ayarı: Başlangıçta HIGH (Röle Kapanır / Kapı Kilitli)
+  digitalWrite(RELAY_PIN, HIGH);   
   digitalWrite(BUZZER_PIN, LOW);  // Buzzer Kapalı
 
   // SPI Veri Yolu Başlat (SCK=18, MISO=19, MOSI=23)
@@ -373,22 +375,23 @@ bool checkCardAuthorizationOffline(String cardUID, String &foundHolderName) {
   return false;
 }
 
-// 🔓 YETKİLİ GEÇİŞ: Röle 3 Saniye Açık + 1 Kısa Bip Sesi (🔊)
+// 🔓 YETKİLİ GEÇİŞ: Röle 3 Saniye AÇIK (LOW) + 1 Kısa Bip Sesi (🔊)
 void grantAccess() {
   Serial.println("🔓 [ERİŞİM İZNİ VERİLDİ] Röle Tetiklendi, Kapı Açıldı!");
-  digitalWrite(RELAY_PIN, HIGH);  // Röle Tetikle (Kapıyı Aç)
+  digitalWrite(RELAY_PIN, LOW);   // Active-Low: Röle Açılır
   digitalWrite(BUZZER_PIN, HIGH); // 1 Kısa Bip Sesi
   delay(150);
   digitalWrite(BUZZER_PIN, LOW);
 
   delay(3000);                    // 3 Saniye Kapıyı Açık Tut
-  digitalWrite(RELAY_PIN, LOW);   // Kapıyı Tekrar Kilitle
+  digitalWrite(RELAY_PIN, HIGH);  // Active-Low: Röle Kapanır
   Serial.println("🔒 Kapı Tekrar Kilitlendi.");
 }
 
 // 🔒 YETKİSİZ GEÇİŞ: Röle Kapalı + 3 Kısa Bip Sesi (🔊🔊🔊)
 void denyAccess() {
   Serial.println("🔒 [YETKİSİZ ERİŞİM] Geçiş Reddedildi, Röle Kilitli!");
+  digitalWrite(RELAY_PIN, HIGH);  // Active-Low: Röle Kapalı
   for (int i = 0; i < 3; i++) {
     digitalWrite(BUZZER_PIN, HIGH);
     delay(100);
