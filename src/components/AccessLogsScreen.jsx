@@ -218,7 +218,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
 
           <div>
             <label className="form-label" style={{ color: '#38bdf8', fontWeight: 700 }}>
-              🚪 Geçiş Yapılacak Kapı (Seçiniz):
+               Geçiş Yapılacak Kapı (Seçiniz):
             </label>
             <select
               value={selectedGate}
