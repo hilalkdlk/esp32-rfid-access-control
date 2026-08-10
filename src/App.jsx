@@ -105,7 +105,7 @@ export default function App() {
     });
   };
 
-  // Add new card handler (POST to API & Firestore)
+  // Add new card handler (POST to API & Firestore with Duplicate UID check response handling)
   const handleAddCard = async (newCard) => {
     try {
       const res = await fetch(`${API_BASE}/cards`, {
@@ -118,13 +118,15 @@ export default function App() {
       if (json.success && json.data) {
         setCards(prev => [json.data, ...prev]);
         setSelectedCardForSim(json.data.id || json.data.uid);
+        showToast(`Yeni RFID Kart (${newCard.uid}) kaydedildi ve Firestore veritabanına eklendi!`, 'success');
       } else {
-        setCards(prev => [newCard, ...prev]);
-        setSelectedCardForSim(newCard.id || newCard.uid);
+        showToast(json.error || 'Kart eklenirken bir hata oluştu.', 'error');
+        return;
       }
     } catch (err) {
       setCards(prev => [newCard, ...prev]);
       setSelectedCardForSim(newCard.id || newCard.uid);
+      showToast(`Yeni RFID Kart (${newCard.uid}) kaydedildi!`, 'success');
     }
 
     setEsp32Status(prev => ({
@@ -132,7 +134,6 @@ export default function App() {
       cardsJsonCount: prev.cardsJsonCount + 1,
       lastSyncTime: new Date().toLocaleTimeString('tr-TR')
     }));
-    showToast(`Yeni RFID Kart (${newCard.uid}) kaydedildi ve Firestore veritabanına eklendi!`, 'success');
     fetchLiveCards();
   };
 
@@ -147,7 +148,7 @@ export default function App() {
       const json = await res.json();
       if (json.success) {
         setCards(prev => prev.map(c => c.id === cardId ? { ...c, ...updatedFields } : c));
-        showToast('Kart bilgileri başarıyla güncellendi ve Firestore\'a işlendi!', 'success');
+        showToast('Kullanıcı bilgileri başarıyla güncellendi ve Firestore\'a işlendi!', 'success');
       } else {
         setCards(prev => prev.map(c => c.id === cardId ? { ...c, ...updatedFields } : c));
       }
@@ -168,7 +169,7 @@ export default function App() {
       const json = await res.json();
       if (json.success) {
         setCards(prev => prev.map(c => c.id === cardId ? { ...c, status: nextStatus } : c));
-        showToast(`Kart durumu "${nextStatus}" olarak Firestore'da güncellendi!`, 'success');
+        showToast(`Kullanıcı durumu "${nextStatus}" olarak Firestore'da güncellendi!`, 'success');
       } else {
         setCards(prev => prev.map(c => c.id === cardId ? { ...c, status: nextStatus } : c));
       }
@@ -179,7 +180,7 @@ export default function App() {
 
   // Delete Card with Live API & Firestore Removal
   const handleDeleteCard = async (cardId) => {
-    if (!window.confirm('Bu kartı Firestore veritabanından ve sistemden silmek istediğinize emin misiniz?')) {
+    if (!window.confirm('Bu kullanıcıyı Firestore veritabanından ve sistemden silmek istediğinize emin misiniz?')) {
       return;
     }
 
@@ -190,7 +191,7 @@ export default function App() {
       const json = await res.json();
       if (json.success) {
         setCards(prev => prev.filter(c => c.id !== cardId));
-        showToast('Kart veritabanından ve sistemden başarıyla silindi!', 'success');
+        showToast('Kullanıcı veritabanından ve sistemden başarıyla silindi!', 'success');
       } else {
         setCards(prev => prev.filter(c => c.id !== cardId));
       }
@@ -203,7 +204,7 @@ export default function App() {
   const handleSimulateFromList = (card) => {
     setSelectedCardForSim(card.id || card.uid);
     setActiveTab('logs');
-    showToast(`"${card.holderName}" kartı turnike simülatöründe otomatik olarak seçildi.`, 'success');
+    showToast(`"${card.holderName}" turnike simülatöründe otomatik olarak seçildi.`, 'success');
   };
 
   // Sync pending LittleFS logs to API & Firestore
@@ -284,6 +285,7 @@ export default function App() {
       {/* Screen 2: Kart Ekleme */}
       {activeTab === 'add' && (
         <AddCardScreen 
+          cards={cards}
           onAddCard={handleAddCard}
           onNavigateToLogs={() => setActiveTab('logs')}
           onNavigateToList={() => setActiveTab('list')}

@@ -23,6 +23,25 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());          // Tüm kaynaklardan (React paneli, ESP32) gelen HTTP isteklerine izin ver
 app.use(express.json());  // Gelen JSON verilerini otomatik nesneye dönüştür (req.body)
 
+// Türkiye Saat Dilimi (Europe/Istanbul UTC+3) İle Formatlama Fonksiyonu
+const getTurkeyFormattedTimestamp = () => {
+  const d = new Date();
+  const options = {
+    timeZone: 'Europe/Istanbul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  };
+  const parts = new Intl.DateTimeFormat('tr-TR', options).formatToParts(d);
+  const hash = {};
+  parts.forEach(p => hash[p.type] = p.value);
+  return `${hash.year}-${hash.month}-${hash.day} ${hash.hour}:${hash.minute}:${hash.second}`;
+};
+
 // ============================================================================
 // REST API ROTALARI (FIRESTORE VERİTABANI ENTEGRELİ)
 // ============================================================================
@@ -41,7 +60,7 @@ app.get('/api/health', async (req, res) => {
     res.json({
       status: "ONLINE",
       message: "ESP32 REST API Servisi ve Firebase Firestore Canlı!",
-      timestamp: new Date().toISOString(),
+      timestamp: getTurkeyFormattedTimestamp(),
       firestoreConnected: true,
       totalCardsInFirestore: cardsSnapshot.size,
       totalLogsInFirestore: logsSnapshot.size
@@ -87,7 +106,7 @@ app.get('/api/cards', async (req, res) => {
 
 /**
  * ----------------------------------------------------------------------------
- * 3. YENİ KART EKLEME ENDPOINT'İ (REACT YÖNETİM PANELİNDEN)
+ * 3. YENİ KART EKLEME ENDPOINT'İ (REACT YÖNETİM PANELİNDEN - MÜKERRER UID KONTROLLÜ)
  * ----------------------------------------------------------------------------
  * Yön: POST /api/cards
  */
@@ -99,8 +118,30 @@ app.post('/api/cards', async (req, res) => {
       return res.status(400).json({ success: false, error: "UID ve Kart Sahibi ad-soyad zorunludur." });
     }
 
+    // UID boşluklarını temizle ve büyük harfe çevir (Örn: "E49A1277")
+    const cleanUid = uid.replace(/\s+/g, '').toUpperCase().trim();
+
+    // MÜKERRER KART KONTROLÜ (Veritabanında aynı UID var mı?)
+    const cardsSnapshot = await db.collection('cards').get();
+    let duplicateCard = null;
+
+    cardsSnapshot.forEach(doc => {
+      const c = doc.data();
+      if (c.uid && c.uid.replace(/\s+/g, '').toUpperCase() === cleanUid) {
+        duplicateCard = c;
+      }
+    });
+
+    if (duplicateCard) {
+      console.warn(`[FIRESTORE ENGEL] Mükerrer Kart Ekleme Denemesi: ${cleanUid} (Kullanıcı: ${duplicateCard.holderName})`);
+      return res.status(409).json({
+        success: false,
+        error: `Bu RFID Kart UID numarası (${cleanUid}) zaten '${duplicateCard.holderName}' kullanıcısına tanımlı! Aynı kart mükerrer olarak eklenemez.`
+      });
+    }
+
     const newCardData = {
-      uid: uid.toUpperCase().trim(),
+      uid: cleanUid,
       holderName: holderName.trim(),
       cardType: cardType || "Personel",
       employeeId: employeeId || "EMP-2026-000",
@@ -287,7 +328,7 @@ app.post('/api/logs', async (req, res) => {
 
     cardsSnapshot.forEach(doc => {
       const c = doc.data();
-      if (c.uid.replace(/\s+/g, '') === cleanUid) {
+      if (c.uid && c.uid.replace(/\s+/g, '').toUpperCase() === cleanUid) {
         targetCard = { id: doc.id, ...c };
       }
     });
@@ -312,29 +353,31 @@ app.post('/api/logs', async (req, res) => {
 
     let statusText = 'Yetkili';
     if (!targetCard) {
-      statusText = 'Tanımlanmamış Yabancı Kart';
+      statusText = 'Tanımlanmamış Yabancı Kullanıcı';
     } else if (!isActive) {
-      statusText = 'Kart Engelli (Pasif)';
+      statusText = 'Kullanıcı Engelli (Pasif)';
     } else if (!hasGatePermission) {
       statusText = 'Kapı Yetkisi Yok (Yetkisiz Kapı)';
     }
 
+    const trTimestamp = getTurkeyFormattedTimestamp();
+
     const newLogData = {
-      uid: uid.toUpperCase().trim(),
-      holderName: targetCard ? targetCard.holderName : 'Tanımlanmamış Yabancı Kart',
+      uid: cleanUid,
+      holderName: targetCard ? targetCard.holderName : 'Tanımlanmamış Yabancı Kullanıcı',
       gate: currentGate,
       direction: direction || 'Giriş',
       status: statusText,
       relayTriggered: isAuthorized, // SADECE KART AKTİF VE KAPI YETKİSİ VARSA RÖLE AÇILIR!
       buzzerBeeps: isAuthorized ? 1 : 3, // İzin varsa 1 Bip, İzin yoksa 3 Bip!
-      timestamp: new Date().toISOString(),
+      timestamp: trTimestamp,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       syncedToFirestore: true
     };
 
     const docRef = await db.collection('access_logs').add(newLogData);
 
-    console.log(`[FIRESTORE CANLI LOG] Kart Okutuldu: ${newLogData.holderName} (${newLogData.uid}) @ ${currentGate} -> Sonuç: ${newLogData.status}`);
+    console.log(`[FIRESTORE CANLI LOG] Kart Okutuldu: ${newLogData.holderName} (${newLogData.uid}) @ ${currentGate} -> Sonuç: ${newLogData.status} | Saat: ${trTimestamp}`);
 
     res.status(201).json({
       success: true,
@@ -351,7 +394,7 @@ app.post('/api/logs', async (req, res) => {
 
 /**
  * ----------------------------------------------------------------------------
- * 9. LITTLEFS PENDINGLOGS TOPLU SENKRONİZASYON ENDPOINT'İ (KART SAHİBİ VE DURUM EŞLEŞTİRMELİ)
+ * 9. LITTLEFS PENDINGLOGS TOPLU SENKRONİZASYON ENDPOINT'İ (TÜRKİYE SAATİ VE İSİM KORUMALI)
  * ----------------------------------------------------------------------------
  * Yön: POST /api/logs/sync
  */
@@ -376,35 +419,45 @@ app.post('/api/logs/sync', async (req, res) => {
     });
 
     const batch = db.batch();
+    const trTimestamp = getTurkeyFormattedTimestamp();
 
     pendingLogs.forEach(pLog => {
       const logRef = db.collection('access_logs').doc();
       const cleanLogUid = (pLog.uid || '').toUpperCase().replace(/\s+/g, '');
       const matchedCard = cardsMap.get(cleanLogUid);
 
-      const resolvedHolderName = matchedCard ? matchedCard.holderName : (pLog.holderName || 'Çevrimdışı Tanımsız Kart');
-      const isAuthorized = pLog.relayTriggered !== undefined 
-        ? pLog.relayTriggered 
-        : (pLog.status && pLog.status.includes('Yetkili'));
+      const resolvedHolderName = matchedCard 
+        ? matchedCard.holderName 
+        : ((pLog.holderName && pLog.holderName !== 'Çevrimdışı Tanımsız Kullanıcı') ? pLog.holderName : 'Çevrimdışı Tanımsız Kullanıcı');
+
+      // FİZİKİ RÖLE DURUMUNUN KORUNMASI: Donanımda kapı açıldıysa (relayTriggered: true) arayüzde de yetkili göster
+      const isAuthorized = pLog.relayTriggered === true || (pLog.status && pLog.status.includes('Yetkili'));
+
+      let statusText = pLog.status || 'Yetkili';
+      if (isAuthorized) {
+        statusText = matchedCard ? 'Yetkili (Çevrimdışı Okutma)' : 'Yetkili (Çevrimdışı / Kayıtlı Kart)';
+      } else {
+        statusText = 'Yetkisiz (Çevrimdışı)';
+      }
 
       batch.set(logRef, {
-        uid: (pLog.uid || 'UNKNOWN').toUpperCase().trim(),
+        uid: cleanLogUid || 'UNKNOWN',
         holderName: resolvedHolderName,
         gate: pLog.gate || 'Ana Giriş Turnikesi',
         direction: pLog.direction || 'Giriş',
-        status: pLog.status || (isAuthorized ? 'Yetkili' : 'Yetkisiz'),
+        status: statusText,
         relayTriggered: Boolean(isAuthorized),
         buzzerBeeps: isAuthorized ? 1 : 3,
-        timestamp: new Date().toISOString(),
+        timestamp: pLog.timestamp || trTimestamp,
         syncedToFirestore: true,
-        syncedTime: new Date().toISOString(),
+        syncedTime: trTimestamp,
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
     });
 
     await batch.commit();
 
-    console.log(`[FIRESTORE SENKRON OK] LittleFS üzerinden ${pendingLogs.length} adet çevrimdışı log kart sahibi isimleriyle eşleştirilerek Firestore'a aktarıldı.`);
+    console.log(`[FIRESTORE SENKRON OK] LittleFS üzerinden ${pendingLogs.length} adet çevrimdışı log Türkiye saatiyle (${trTimestamp}) Firestore'a aktarıldı.`);
 
     res.json({
       success: true,

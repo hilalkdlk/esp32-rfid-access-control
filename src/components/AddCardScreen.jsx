@@ -3,11 +3,11 @@ import confetti from 'canvas-confetti';
 import { RefreshCw, ArrowRight, Sparkles, AlertCircle, CheckCircle2, PlusCircle, ShieldCheck, DoorClosed, GraduationCap, Briefcase } from 'lucide-react';
 import { DEPARTMENTS, FACULTIES, STUDENT_DEPARTMENTS, GATES } from '../data/initialData';
 
-export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
+export default function AddCardScreen({ onAddCard, onNavigateToLogs, cards = [] }) {
   // Card Type Selector: 'Öğrenci' | 'Personel' (Default: Öğrenci)
   const [cardType, setCardType] = useState('Öğrenci');
 
-  const [uid, setUid] = useState('E4 9A 12 77');
+  const [uid, setUid] = useState('E49A1277');
   const [holderName, setHolderName] = useState('');
   const [employeeId, setEmployeeId] = useState('');
   
@@ -29,7 +29,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
 
   const generateRandomUID = () => {
     const hex = () => Math.floor(Math.random() * 256).toString(16).toUpperCase().padStart(2, '0');
-    setUid(`${hex()} ${hex()} ${hex()} ${hex()}`);
+    setUid(`${hex()}${hex()}${hex()}${hex()}`);
   };
 
   const toggleGatePermission = (gateName) => {
@@ -55,17 +55,24 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
     setSelectedGates(updated);
   };
 
-  // Strict Form Validation Logic
+  // Strict Form Validation & Duplicate UID Check Logic
   const validateForm = () => {
-    // 1. RFID Card UID Validation (Format check: 4 bytes HEX "XX XX XX XX")
-    const cleanUid = uid.trim().toUpperCase();
-    const uidRegex = /^([0-9A-F]{2}\s){3}[0-9A-F]{2}$/;
+    // 1. RFID Card UID Validation (Boşluksuz Tam 8 Karakter HEX: Örn: E49A1277)
+    const cleanUid = uid.replace(/\s+/g, '').trim().toUpperCase();
+    const uidRegex = /^[0-9A-F]{8}$/i;
     if (!uidRegex.test(cleanUid)) {
-      setErrorMsg('RFID Kart UID numarası 4 baytlık HEX formatında olmalıdır. (Örn: A3 8F 42 C1)');
+      setErrorMsg('RFID Kart UID numarası boşluksuz TAM 8 karakterlik HEX formatında olmalıdır. (Örn: E49A1277)');
       return false;
     }
 
-    // 2. Holder Name Validation
+    // 2. MÜKERRER KART (DUPLICATE UID) KONTROLÜ
+    const existingCard = cards.find(c => c.uid && c.uid.replace(/\s+/g, '').toUpperCase() === cleanUid);
+    if (existingCard) {
+      setErrorMsg(`⚠️ Bu RFID Kart UID numarası (${cleanUid}) zaten '${existingCard.holderName}' adlı kullanıcıya tanımlı! Aynı kart tekrar kaydedilemez.`);
+      return false;
+    }
+
+    // 3. Holder Name Validation
     const cleanName = holderName.trim();
     if (!cleanName || cleanName.length < 3) {
       setErrorMsg('Kart sahibinin adı ve soyadı en az 3 karakter olmalıdır.');
@@ -77,7 +84,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
       return false;
     }
 
-    // 3. Student No vs Staff ID Validation
+    // 4. Student No vs Staff ID Validation
     const cleanId = employeeId.trim();
     if (cardType === 'Öğrenci') {
       // Must be EXACTLY 10 digits
@@ -94,7 +101,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
       }
     }
 
-    // 4. Gate selection check
+    // 5. Gate selection check
     if (selectedGates.length === 0) {
       setErrorMsg('Lütfen en az 1 adet erişim kapısı izni seçiniz.');
       return false;
@@ -106,13 +113,15 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Execute Validation
+    // Execute Validation & Duplicate Check
     if (!validateForm()) {
       return;
     }
 
     setErrorMsg('');
     setIsSubmitting(true);
+
+    const cleanUid = uid.replace(/\s+/g, '').trim().toUpperCase();
 
     const formattedAccessLevel = selectedGates.includes("Tüm Kapılar / Yönetici")
       ? "Tüm Kapılar / Yönetici"
@@ -122,7 +131,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
 
     const newCard = {
       id: `card-${Date.now()}`,
-      uid: uid.trim().toUpperCase(),
+      uid: cleanUid,
       holderName: holderName.trim(),
       cardType,
       employeeId: employeeId.trim(),
@@ -159,7 +168,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
           </div>
           <div>
             <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc' }}>Yeni RFID Kart Tanımlama</h2>
-            <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>Gelişmiş veri doğrulama kontrollü kayıt formu.</p>
+            <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>Gelişmiş veri doğrulama ve mükerrer UID kontrollü kayıt formu.</p>
           </div>
         </div>
 
@@ -186,7 +195,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
             }}
           >
             <GraduationCap size={18} color={cardType === 'Öğrenci' ? '#38bdf8' : '#64748b'} />
-            Öğrenci Kaydı
+            🎓 Öğrenci Kaydı
           </button>
 
           <button
@@ -210,7 +219,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
             }}
           >
             <Briefcase size={18} color={cardType === 'Personel' ? '#38bdf8' : '#64748b'} />
-            Personel Kaydı
+            💼 Personel Kaydı
           </button>
         </div>
 
@@ -223,10 +232,10 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
         )}
 
         <form onSubmit={handleSubmit}>
-          {/* Card UID */}
+          {/* Card UID Without Spaces */}
           <div className="form-group">
             <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>RFID Card UID Numarası (4 Bayt HEX)</span>
+              <span>RFID Card UID Numarası (Boşluksuz 8 HEX)</span>
               <button 
                 type="button" 
                 onClick={generateRandomUID}
@@ -238,10 +247,10 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
             <input
               type="text"
               value={uid}
-              onChange={(e) => setUid(e.target.value.toUpperCase())}
+              onChange={(e) => setUid(e.target.value.replace(/\s+/g, '').toUpperCase())}
               className="form-input form-input-mono"
-              placeholder="Örn: A3 8F 42 C1"
-              maxLength={11}
+              placeholder="Örn: E49A1277"
+              maxLength={8}
               required
             />
           </div>
@@ -418,14 +427,14 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs }) {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div className="nfc-chip"></div>
                 <span style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '1px', color: '#7dd3fc' }}>
-                  {cardType === 'Öğrenci' ? ' ÖĞRENCİ KARTI' : ' PERSONEL KARTI'}
+                  {cardType === 'Öğrenci' ? '🎓 ÖĞRENCİ KARTI' : '💼 PERSONEL KARTI'}
                 </span>
               </div>
 
               <div>
                 <div style={{ fontSize: '0.65rem', color: '#cbd5e1', textTransform: 'uppercase' }}>RFID UID</div>
                 <div className="form-input-mono" style={{ fontSize: '1.3rem', fontWeight: '800', letterSpacing: '2px' }}>
-                  {uid || '00 00 00 00'}
+                  {uid || '00000000'}
                 </div>
               </div>
 

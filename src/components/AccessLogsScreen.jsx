@@ -4,6 +4,24 @@ import { GATES } from '../data/initialData';
 
 const API_BASE = 'http://localhost:5000/api';
 
+// Format timestamp to Turkey Local Time (YYYY-MM-DD HH:mm:ss)
+const formatTurkeyTimestamp = (ts) => {
+  if (!ts) {
+    const now = new Date();
+    return now.toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' });
+  }
+
+  try {
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) {
+      return ts; // Already string formatted
+    }
+    return d.toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' });
+  } catch (err) {
+    return ts;
+  }
+};
+
 export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, syncPendingLogs, selectedCardForSim }) {
   const [selectedCardId, setSelectedCardId] = useState(selectedCardForSim || cards[0]?.id || cards[0]?.uid || '');
   const [selectedGate, setSelectedGate] = useState(GATES[0]);
@@ -71,8 +89,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
       statusText = 'Kapı Yetkisi Yok (Yetkisiz Kapı)';
     }
 
-    const now = new Date();
-    const timestamp = `${now.toISOString().split('T')[0]} ${now.toLocaleTimeString('tr-TR')}`;
+    const timestamp = formatTurkeyTimestamp();
 
     if (esp32Status.isOnline) {
       // --- ONLINE MOD: CANLI REST API & FIRESTORE KANALI ---
@@ -91,7 +108,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
         if (json.success && json.data) {
           const newOnlineLog = {
             id: json.data.id || `log-${Date.now()}`,
-            timestamp: json.data.timestamp || timestamp,
+            timestamp: formatTurkeyTimestamp(json.data.timestamp) || timestamp,
             holderName: json.data.holderName || holderName,
             gate: activeGate,
             direction,
@@ -264,7 +281,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
           <div>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc' }}>Geçiş Kayıtları Log Listesi</h3>
-            <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>Turnikelerden geçen kullanıcıların hareket dökümü (İsim ve Soyisime Göre Tutulur).</p>
+            <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>Turnikelerden geçen kullanıcıların hareket dökümü (Türkiye Yerel Saati: UTC+3).</p>
           </div>
 
           <div style={{ position: 'relative', width: '240px' }}>
@@ -284,7 +301,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
           <table className="custom-table">
             <thead>
               <tr>
-                <th>Tarih & Saat</th>
+                <th>Tarih & Saat (TRT)</th>
                 <th>Kullanıcı Ad Soyad</th>
                 <th>Kapı</th>
                 <th>Yön</th>
@@ -304,7 +321,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
                 filteredLogs.map(log => (
                   <tr key={log.id}>
                     <td style={{ fontSize: '0.78rem', color: '#cbd5e1', fontFamily: 'var(--font-mono)' }}>
-                      {log.timestamp}
+                      {formatTurkeyTimestamp(log.timestamp)}
                     </td>
                     <td style={{ fontWeight: 700, color: '#f8fafc', fontSize: '0.92rem' }}>{log.holderName}</td>
                     <td style={{ fontSize: '0.82rem', color: '#38bdf8', fontWeight: 700 }}>
