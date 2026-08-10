@@ -172,7 +172,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs, cards = [] 
           </div>
         </div>
 
-        {/* Card Type Selector (Primary Sky Cyan / Ocean Blue Theme) */}
+        {/* Card Type Selector (Clean without emojis) */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '18px' }}>
           <button
             type="button"
@@ -195,7 +195,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs, cards = [] 
             }}
           >
             <GraduationCap size={18} color={cardType === 'Öğrenci' ? '#38bdf8' : '#64748b'} />
-            🎓 Öğrenci Kaydı
+            Öğrenci Kaydı
           </button>
 
           <button
@@ -219,7 +219,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs, cards = [] 
             }}
           >
             <Briefcase size={18} color={cardType === 'Personel' ? '#38bdf8' : '#64748b'} />
-            💼 Personel Kaydı
+            Personel Kaydı
           </button>
         </div>
 
@@ -427,7 +427,7 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs, cards = [] 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div className="nfc-chip"></div>
                 <span style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '1px', color: '#7dd3fc' }}>
-                  {cardType === 'Öğrenci' ? '🎓 ÖĞRENCİ KARTI' : '💼 PERSONEL KARTI'}
+                  {cardType === 'Öğrenci' ? 'ÖĞRENCİ KARTI' : 'PERSONEL KARTI'}
                 </span>
               </div>
 

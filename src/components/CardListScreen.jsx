@@ -182,8 +182,8 @@ export default function CardListScreen({ cards, onUpdateCard, onToggleCardStatus
               style={{ width: 'auto', padding: '9px 14px', fontSize: '0.88rem' }}
             >
               <option value="ALL">Tüm Türler</option>
-              <option value="Öğrenci">🎓 Öğrenciler</option>
-              <option value="Personel">💼 Personeller</option>
+              <option value="Öğrenci">Öğrenciler</option>
+              <option value="Personel">Personeller</option>
             </select>
 
             <button onClick={onNavigateToAdd} className="btn btn-primary" style={{ padding: '9px 18px', fontSize: '0.88rem' }}>
@@ -361,7 +361,7 @@ export default function CardListScreen({ cards, onUpdateCard, onToggleCardStatus
                     cursor: 'pointer'
                   }}
                 >
-                  🎓 Öğrenci
+                  Öğrenci
                 </button>
                 <button
                   type="button"
@@ -377,7 +377,7 @@ export default function CardListScreen({ cards, onUpdateCard, onToggleCardStatus
                     cursor: 'pointer'
                   }}
                 >
-                  💼 Personel
+                  Personel
                 </button>
               </div>
 
