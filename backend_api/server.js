@@ -48,6 +48,28 @@ const getTurkeyFormattedTimestamp = () => {
 
 /**
  * ----------------------------------------------------------------------------
+ * 0. KÖK DİZİN (WELCOME ROOT) ENDPOINT'İ
+ * ----------------------------------------------------------------------------
+ * Yön: GET /
+ */
+app.get('/', (req, res) => {
+  res.send(`
+    <div style="font-family: Arial, sans-serif; text-align: center; padding: 40px; background: #0b1329; color: #ffffff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+      <h1 style="color: #38bdf8; margin-bottom: 8px;">🚀 ESP32 Node.js REST API & Firestore Sunucusu Çalışıyor</h1>
+      <p style="color: #cbd5e1; max-width: 600px; font-size: 0.95rem;">
+        Bu API sunucusu ESP32 MFRC522/W5500 donanımı ve React Web Arayüzü için canlı veri servis etmektedir.
+      </p>
+      <div style="margin-top: 24px; display: flex; gap: 14px; flex-wrap: wrap;">
+        <a href="/api/health" style="padding: 10px 18px; background: #0284c7; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 0.88rem;">🔍 Sağlık Testi (/api/health)</a>
+        <a href="/api/cards" style="padding: 10px 18px; background: #059669; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 0.88rem;">🎴 Kart Listesi (/api/cards)</a>
+        <a href="/api/logs" style="padding: 10px 18px; background: #e11d48; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 0.88rem;">📋 Geçiş Logları (/api/logs)</a>
+      </div>
+    </div>
+  `);
+});
+
+/**
+ * ----------------------------------------------------------------------------
  * 1. PING & SAĞLIK KONTROLÜ ENDPOINT'İ
  * ----------------------------------------------------------------------------
  * Yön: GET /api/health
@@ -96,6 +118,8 @@ app.get('/api/cards', async (req, res) => {
     res.json({
       success: true,
       count: cardsList.length,
+      timestamp: getTurkeyFormattedTimestamp(),
+      serverEpoch: Math.floor(Date.now() / 1000),
       data: cardsList
     });
   } catch (error) {
@@ -456,7 +480,7 @@ app.post('/api/logs/sync', async (req, res) => {
         status: statusText,
         relayTriggered: Boolean(isAuthorized),
         buzzerBeeps: isAuthorized ? 1 : 3,
-        timestamp: pLog.timestamp || trTimestamp,
+        timestamp: (pLog.timestamp && String(pLog.timestamp).length >= 10) ? pLog.timestamp : trTimestamp,
         syncedToFirestore: true,
         syncedTime: trTimestamp,
         createdAt: admin.firestore.FieldValue.serverTimestamp()

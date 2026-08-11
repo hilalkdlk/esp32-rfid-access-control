@@ -26,25 +26,27 @@
 
 // ----------------------------------------------------------------------------
 // BU ESP32 DONANIMININ BULUNDUĞU KAPI İSMİ
-// (Fiziki cihaz hangi kapıya bağlıysa buraya o kapının adını yazabilirsiniz)
-// Seçenekler: "Ana Giriş Turnikesi", "AR-GE Laboratuvar Kapısı", "Yönetim Katı Turnikesi", "Otopark Bariyeri", "Server Oda Kapısı"
 // ----------------------------------------------------------------------------
-const char* DEVICE_GATE = "Ana Giriş Turnikesi";
+ const char* DEVICE_GATE = "Ana Giriş Turnikesi";      // 1. ESP32 Cihazı (Ana Giriş Turnikesi)
+//const char* DEVICE_GATE = "AR-GE Laboratuvar Kapısı";    // 2. ESP32 Cihazı (AR-GE Laboratuvar Kapısı)
 
 // ----------------------------------------------------------------------------
 // DONANIM NESNELERİ VE AYARLAR
 // ----------------------------------------------------------------------------
 MFRC522 rfid(SS_PIN, RST_PIN);
 
-// W5500 Ethernet MAC ve İstemci
-byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+// W5500 Ethernet MAC ve İstemci (Ağdaki her cihazın MAC adresi benzersiz olmalıdır)
+ byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };  // 1. ESP32 MAC Adresi
+//byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xEE };     // 2. ESP32 MAC Adresi (Ağ çakışmasını önlemek için 0xEE yapıldı)
 EthernetClient ethClient;
 
 // Node.js REST API Sunucu Bilgileri (Bilgisayarınızın Canlı Yerel IP Adresi)
 const char* apiHost = "10.130.0.118";
 const int apiPort = 5000;
 
-// Sistem Durum Değişkenleri
+// Zaman Senkronizasyonu Hassas Ofset Değişkenleri (Gerçek Çevrimdışı Saniye Hesabı İçin)
+String baseTimestampStr = "";
+unsigned long baseSyncMillis = 0;
 bool isInternetAvailable = false;
 unsigned long lastHeartbeat = 0;
 const unsigned long HEARTBEAT_INTERVAL = 10000; // 10 saniyede bir ping & otomatik kart senkronizasyon kontrolü
@@ -100,6 +102,9 @@ void setup() {
     Serial.println(Ethernet.localIP());
     isInternetAvailable = true;
     
+    // Türkiye Saat Dilimi NTP Zaman Senkronizasyonu (UTC+3)
+    configTime(3 * 3600, 0, "pool.ntp.org", "time.nist.gov");
+
     // Açılışta API'den güncel kart listesini otomatik olarak çekip LittleFS'e kaydet!
     updateLocalCardsFromAPI();
     syncPendingLogs();
@@ -244,12 +249,18 @@ void updateLocalCardsFromAPI() {
       DynamicJsonDocument doc(4096);
       DeserializationError err = deserializeJson(doc, jsonBody);
       
-      if (!err && doc.containsKey("data")) {
-        File file = LittleFS.open("/cards.json", "w");
-        serializeJson(doc["data"], file);
-        file.close();
-        
-        Serial.println("✅ [LITTLEFS OK] LittleFS cards.json dosyası REST API'den otomatik olarak başarıyla güncellendi!");
+      if (!err) {
+        if (doc.containsKey("timestamp")) {
+          baseTimestampStr = doc["timestamp"].as<String>();
+          baseSyncMillis = millis();
+        }
+        if (doc.containsKey("data")) {
+          File file = LittleFS.open("/cards.json", "w");
+          serializeJson(doc["data"], file);
+          file.close();
+          
+          Serial.println("✅ [LITTLEFS OK] LittleFS cards.json ve Zaman Ofseti (" + baseTimestampStr + ") başarıyla güncellendi!");
+        }
       }
     }
   } else {
@@ -419,6 +430,36 @@ void logAccessOffline(String cardUID, bool isGranted, String holderName) {
     array = doc.to<JsonArray>();
   }
 
+  // Çevrimdışı kart okutma anındaki HASSAS GERÇEK SAAT HESABI (Saniye Hassasiyetinde)
+  String currentTimestamp = "";
+  if (baseTimestampStr.length() >= 19 && baseSyncMillis > 0) {
+    int y, m, d, hh, mm, ss;
+    if (sscanf(baseTimestampStr.c_str(), "%d-%d-%d %d:%d:%d", &y, &m, &d, &hh, &mm, &ss) == 6) {
+      struct tm t = {0};
+      t.tm_year = y - 1900;
+      t.tm_mon = m - 1;
+      t.tm_mday = d;
+      t.tm_hour = hh;
+      t.tm_min = mm;
+      t.tm_sec = ss;
+
+      time_t epoch = mktime(&t);
+      unsigned long elapsedSec = (millis() - baseSyncMillis) / 1000;
+      epoch += elapsedSec;
+
+      struct tm *resTime = localtime(&epoch);
+      char buf[30];
+      snprintf(buf, sizeof(buf), "%04d-%02d-%02d %02d:%02d:%02d",
+               resTime->tm_year + 1900,
+               resTime->tm_mon + 1,
+               resTime->tm_mday,
+               resTime->tm_hour,
+               resTime->tm_min,
+               resTime->tm_sec);
+      currentTimestamp = String(buf);
+    }
+  }
+
   JsonObject newLog = array.createNestedObject();
   newLog["uid"] = cardUID;
   newLog["holderName"] = holderName;
@@ -427,6 +468,9 @@ void logAccessOffline(String cardUID, bool isGranted, String holderName) {
   newLog["status"] = isGranted ? "Yetkili" : "Yetkisiz";
   newLog["relayTriggered"] = isGranted;
   newLog["buzzerBeeps"] = isGranted ? 1 : 3;
+  if (currentTimestamp.length() > 0) {
+    newLog["timestamp"] = currentTimestamp; // ⏱️ Kartın fiziki okunduğu TAM SANİYEYİ kaydet!
+  }
 
   File file = LittleFS.open("/pendingLogs.json", "w");
   serializeJson(doc, file);

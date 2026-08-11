@@ -150,6 +150,16 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs, cards = [] 
       onAddCard(newCard);
       setIsSubmitting(false);
 
+      // Reset form fields cleanly for the next registration
+      generateRandomUID();
+      setHolderName('');
+      setEmployeeId('');
+      setFaculty(FACULTIES[0]);
+      setStudentDepartment(STUDENT_DEPARTMENTS[0]);
+      setStaffDepartment(DEPARTMENTS[0]);
+      setSelectedGates(["Ana Giriş Turnikesi"]);
+      setErrorMsg('');
+
       try {
         confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
       } catch (err) {
