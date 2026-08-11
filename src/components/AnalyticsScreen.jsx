@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, CartesianGrid } from 'recharts';
 import { BarChart3, Activity, ShieldCheck, ShieldAlert, DoorClosed, Filter, X, FileSpreadsheet, FileText, Download } from 'lucide-react';
-import { exportToExcel, exportToPDF, exportToCSV } from '../utils/exportUtils';
+import { exportToExcel, exportToCSV } from '../utils/exportUtils';
 
 // Format timestamp to Turkey Local Time
 const formatTurkeyTimestamp = (ts) => {
@@ -249,14 +249,6 @@ export default function AnalyticsScreen({ cards = [], logs = [] }) {
                 style={{ fontSize: '0.78rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '5px' }}
               >
                 <FileSpreadsheet size={15} /> Excel
-              </button>
-
-              <button 
-                onClick={() => exportToPDF(activeDrillLogs, `Geçiş Kontrol Raporu - ${selectedStatusFilter}`)}
-                className="btn btn-primary btn-sm"
-                style={{ fontSize: '0.78rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '5px' }}
-              >
-                <FileText size={15} /> PDF
               </button>
 
               <button 

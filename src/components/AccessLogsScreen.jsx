@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Zap, HardDrive, ShieldCheck, ShieldAlert, Volume2, Search, DoorClosed, FileSpreadsheet, FileText, Download, CreditCard, Calendar, Filter, RotateCcw } from 'lucide-react';
 import { GATES } from '../data/initialData';
-import { exportToExcel, exportToPDF, exportToCSV } from '../utils/exportUtils';
+import { exportToExcel, exportToCSV } from '../utils/exportUtils';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -448,15 +448,6 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
                 title="Filtreli giriş loglarını Excel (.xlsx) olarak indir"
               >
                 <FileSpreadsheet size={15} /> Excel İndir
-              </button>
-
-              <button 
-                onClick={() => exportToPDF(filteredLogs, 'ESP32 Akıllı Kartlı Geçiş Kontrol Raporu')}
-                className="btn btn-primary btn-sm"
-                style={{ fontSize: '0.78rem', padding: '7px 12px', display: 'flex', alignItems: 'center', gap: '5px' }}
-                title="Filtreli giriş loglarını PDF (.pdf) olarak indir"
-              >
-                <FileText size={15} /> PDF İndir
               </button>
 
               <button 

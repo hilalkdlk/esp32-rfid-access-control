@@ -1,6 +1,4 @@
 import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 
 // Helper to get formatted Turkey Timestamp for export filename
 const getExportFilenameTimestamp = () => {
@@ -102,54 +100,7 @@ export const exportSampleTemplate = () => {
   }
 };
 
-// 3. EXPORT TO PDF (.pdf)
-export const exportToPDF = (logs, title = 'ESP32 Akıllı Kartlı Geçiş Kontrol Raporu') => {
-  try {
-    if (!logs || logs.length === 0) {
-      alert('İndirilecek kayıt bulunamadı!');
-      return;
-    }
-
-    const doc = new jsPDF('p', 'mm', 'a4');
-
-    // Header Title
-    doc.setFontSize(16);
-    doc.setTextColor(2, 132, 199); // Cyan-Blue
-    doc.text(title, 14, 18);
-
-    // Subtitle Metadata
-    doc.setFontSize(9);
-    doc.setTextColor(100, 116, 139);
-    doc.text(`Rapor Oluşturma Tarihi: ${new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })} | Toplam Kayıt: ${logs.length} Adet`, 14, 25);
-
-    const tableColumn = ['Tarih & Saat', 'Kullanıcı Adı', 'Kapı', 'Sonuç', 'Röle'];
-    const tableRows = logs.map(log => [
-      log.timestamp || '',
-      log.holderName || '',
-      log.gate || '',
-      log.status || '',
-      log.relayTriggered ? 'Acik' : 'Kapali'
-    ]);
-
-    doc.autoTable({
-      startY: 30,
-      head: [tableColumn],
-      body: tableRows,
-      theme: 'grid',
-      headStyles: { fillColor: [14, 165, 233], textColor: [255, 255, 255], fontStyle: 'bold' },
-      styles: { fontSize: 8.5, cellPadding: 3 },
-      alternateRowStyles: { fillColor: [241, 245, 249] }
-    });
-
-    const filename = `Gecis_Loglari_${getExportFilenameTimestamp()}.pdf`;
-    doc.save(filename);
-  } catch (err) {
-    console.error('PDF İndirme Hatası:', err);
-    alert('PDF dosyası indirilirken bir hata oluştu: ' + err.message);
-  }
-};
-
-// 4. EXPORT TO CSV (.csv with UTF-8 BOM)
+// 3. EXPORT TO CSV (.csv with UTF-8 BOM)
 export const exportToCSV = (logs, filenamePrefix = 'Gecis_Loglari_Raporu') => {
   try {
     if (!logs || logs.length === 0) {
