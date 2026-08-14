@@ -5,6 +5,8 @@ bool isInternetAvailable = false;
 unsigned long lastHeartbeat = 0;
 unsigned long lastCardsSync = 0;
 EthernetClient ethClient;
+String lastScannedUID = "Henüz Yok";
+String lastScannedResult = "-";
 
 // ESP32 Framework Uyumluluğu İçin EthernetServer Sınıfı
 class ESP32EthernetServer : public EthernetServer {
@@ -186,6 +188,10 @@ void handleCardRead(String cardUID) {
     logAccessOffline(cardUID, isAuthorized, holderNameResolved);
   }
 
+  // Son okutulan kart bilgisini Cihaz Durum Paneli için sakla
+  lastScannedUID = cardUID;
+  lastScannedResult = isAuthorized ? ("Yetkili (" + holderNameResolved + ")") : "Yetkisiz (Reddedildi)";
+
   // İzin Durumuna Göre LCD Ekranı Güncelle ve Röle Çalıştır
   if (isAuthorized) {
     displayAccessGranted(holderNameResolved);
@@ -286,6 +292,8 @@ void handleStatusWebRequests() {
 
           doc["cardsCount"] = getRegisteredCardCount();
           doc["pendingLogsCount"] = getPendingLogCount();
+          doc["lastUID"] = lastScannedUID;
+          doc["lastResult"] = lastScannedResult;
 
           String jsonStr;
           serializeJson(doc, jsonStr);
