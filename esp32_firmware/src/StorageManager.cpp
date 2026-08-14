@@ -132,3 +132,52 @@ void logAccessOffline(String cardUID, bool isGranted, String holderName) {
   Serial.print(array.size());
   Serial.println(") -> Kullanıcı: " + holderName + " | Röle: " + (isGranted ? "AÇIK" : "KAPALI"));
 }
+
+// ----------------------------------------------------------------------------
+// 📊 LITTLEFS DEPOLAMA METRİKLERİ VE SAYILARI (DEVICE STATUS PANEL İÇİN)
+// ----------------------------------------------------------------------------
+
+size_t getLittleFSTotalBytes() {
+  return LittleFS.totalBytes();
+}
+
+size_t getLittleFSUsedBytes() {
+  return LittleFS.usedBytes();
+}
+
+size_t getLittleFSFreeBytes() {
+  size_t total = LittleFS.totalBytes();
+  size_t used = LittleFS.usedBytes();
+  return (total > used) ? (total - used) : 0;
+}
+
+float getLittleFSUsagePercentage() {
+  size_t total = LittleFS.totalBytes();
+  size_t used = LittleFS.usedBytes();
+  if (total == 0) return 0.0;
+  return (float)(used * 100.0) / (float)total;
+}
+
+int getRegisteredCardCount() {
+  if (!LittleFS.exists("/cards.json")) return 0;
+  File file = LittleFS.open("/cards.json", "r");
+  DynamicJsonDocument doc(4096);
+  DeserializationError err = deserializeJson(doc, file);
+  file.close();
+  if (!err && doc.is<JsonArray>()) {
+    return doc.as<JsonArray>().size();
+  }
+  return 0;
+}
+
+int getPendingLogCount() {
+  if (!LittleFS.exists("/pendingLogs.json")) return 0;
+  File file = LittleFS.open("/pendingLogs.json", "r");
+  DynamicJsonDocument doc(4096);
+  DeserializationError err = deserializeJson(doc, file);
+  file.close();
+  if (!err && doc.is<JsonArray>()) {
+    return doc.as<JsonArray>().size();
+  }
+  return 0;
+}

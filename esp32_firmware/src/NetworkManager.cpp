@@ -1,9 +1,23 @@
 #include "NetworkManager.h"
+#include "StatusPanelHTML.h"
 
 bool isInternetAvailable = false;
 unsigned long lastHeartbeat = 0;
 unsigned long lastCardsSync = 0;
 EthernetClient ethClient;
+
+// ESP32 Framework Uyumluluğu İçin EthernetServer Sınıfı
+class ESP32EthernetServer : public EthernetServer {
+public:
+  ESP32EthernetServer(uint16_t port) : EthernetServer(port) {}
+  virtual void begin(uint16_t port = 0) override {
+    (void)port;
+    EthernetServer::begin();
+  }
+};
+
+// ESP32 Yerel Durum Arayüzü İçin Port 80 Web Sunucusu
+ESP32EthernetServer statusServer(80);
 
 void initNetwork() {
   selectEthernet();
@@ -24,6 +38,14 @@ void initNetwork() {
     updateLocalCardsFromAPI();
     syncPendingLogs();
   }
+
+  // Yerel Cihaz Durum Arayüzü Sunucusunu Başlat (Port 80)
+  statusServer.begin();
+  if (isInternetAvailable) {
+    Serial.println("🖥️ Yerel Cihaz Durum Paneli Aktif -> http://" + Ethernet.localIP().toString() + "/");
+  } else {
+    Serial.println("🖥️ Yerel Cihaz Durum Paneli Aktif (Port 80 dinleniyor, IP bekleniyor)");
+  }
 }
 
 // 🌐 Ethernet Bağlantısı & İnternet Kontrolü
@@ -32,14 +54,17 @@ void checkEthernetConnection() {
   if (Ethernet.linkStatus() == LinkON) {
     if (!isInternetAvailable) {
       Serial.println("🌐 [İnternet Bağlantısı Kuruldu] LittleFS senkronizasyonu başlatılıyor...");
+      Serial.println("🖥️ Yerel Cihaz Durum Paneli -> http://" + Ethernet.localIP().toString() + "/");
       isInternetAvailable = true;
       updateLocalCardsFromAPI(); // Kart listesini hemen güncelle
       syncPendingLogs();        // Çevrimdışı oluşan logları otomatik olarak REST API'ye aktar!
+      displayStandby();         // LCD Ekranı Güncelle
     }
   } else {
     if (isInternetAvailable) {
       Serial.println("🔌 [İnternet Kesildi] Çevrimdışı Moda Geçildi (LittleFS cards.json Kullanılacak).");
       isInternetAvailable = false;
+      displayStandby();         // LCD Ekranı Güncelle
     }
   }
 }
@@ -101,7 +126,7 @@ void updateLocalCardsFromAPI() {
 void handleCardRead(String cardUID) {
   bool isAuthorized = false;
   bool processedOnline = false;
-  String holderName = "Kullanıcı";
+  String holderNameResolved = "Kullanici";
 
   if (isInternetAvailable) {
     Serial.println("🌐 REST API'ye yetki kontrol isteği gönderiliyor...");
@@ -136,6 +161,15 @@ void handleCardRead(String cardUID) {
         if (response.indexOf("\"authorized\":true") > 0) {
           isAuthorized = true;
         }
+
+        // Ekranda Göstermek İçin JSON Yanıtından holderName Çek
+        int nameStart = response.indexOf("\"holderName\":\"");
+        if (nameStart > 0) {
+          int nameEnd = response.indexOf("\"", nameStart + 14);
+          if (nameEnd > nameStart) {
+            holderNameResolved = response.substring(nameStart + 14, nameEnd);
+          }
+        }
       }
     } else {
       Serial.println("⚠️ REST API Sunucusuna Bağlanılamadı! Çevrimdışı (LittleFS) doğrulama moduna geçiliyor.");
@@ -146,18 +180,24 @@ void handleCardRead(String cardUID) {
   // --- EĞER ONLINE CEVAP ALINAMADIYSA ÇEVRİMDİŞİ (OFFLINE) MODA DÜŞ ---
   if (!processedOnline) {
     Serial.println("📁 Çevrimdışı Mod: LittleFS cards.json dosyasından kontrol ediliyor...");
-    isAuthorized = checkCardAuthorizationOffline(cardUID, holderName);
+    isAuthorized = checkCardAuthorizationOffline(cardUID, holderNameResolved);
     
     // Çevrimdışı Okutmayı LittleFS pendingLogs.json Dosyasına Yaz!
-    logAccessOffline(cardUID, isAuthorized, holderName);
+    logAccessOffline(cardUID, isAuthorized, holderNameResolved);
   }
 
-  // İzin Durumuna Göre Röle Çalıştır
+  // İzin Durumuna Göre LCD Ekranı Güncelle ve Röle Çalıştır
   if (isAuthorized) {
+    displayAccessGranted(holderNameResolved);
     grantAccess();
   } else {
+    displayAccessDenied("Kapı Yetkisi Yok");
     denyAccess();
+    delay(2000); // Erişim Yok mesajı ekranda 2 saniye kalsın
   }
+
+  // Okuma ve Röle Süreci Bittiğinde LCD Ekranı Tekrar Bekleme Moduna ("KARTINIZI OKUTUNUZ") Al
+  displayStandby();
 }
 
 // ⚡ LittleFS pendingLogs.json Üzerindeki Bekleyen Logları REST API'ye Aktarma
@@ -195,4 +235,97 @@ void syncPendingLogs() {
   } else {
     selectRFID();
   }
+}
+
+// 🌐 YEREL ESP32 CİHAZ DURUM PANELİ (DEVICE STATUS PANEL WEB SERVER - PORT 80)
+void handleStatusWebRequests() {
+  selectEthernet();
+  EthernetClient client = statusServer.available();
+  if (!client) {
+    selectRFID();
+    return;
+  }
+
+  unsigned long timeout = millis();
+  String requestLine = "";
+  boolean currentLineIsBlank = true;
+  while (client.connected() && (millis() - timeout < 1000)) {
+    if (client.available()) {
+      char c = client.read();
+      if (requestLine.length() < 100) {
+        requestLine += c;
+      }
+      if (c == '\n' && currentLineIsBlank) {
+        // İSTEK ALINDI - YANIT OLUŞTUR
+        if (requestLine.indexOf("GET /api/status") >= 0) {
+          // CANLI METRİK JSON YANITI
+          size_t totalBytes = getLittleFSTotalBytes();
+          size_t usedBytes = getLittleFSUsedBytes();
+          size_t freeBytes = getLittleFSFreeBytes();
+          float usagePct = getLittleFSUsagePercentage();
+
+          float totalMB = (float)totalBytes / (1024.0 * 1024.0);
+          float usedMB = (float)usedBytes / (1024.0 * 1024.0);
+          float freeMB = (float)freeBytes / (1024.0 * 1024.0);
+
+          DynamicJsonDocument doc(1024);
+          doc["deviceId"] = DEVICE_ID;
+          doc["gateName"] = DEVICE_GATE;
+          doc["ip"] = Ethernet.localIP().toString();
+          doc["ethernet"] = (Ethernet.linkStatus() == LinkON);
+          doc["apiServer"] = isInternetAvailable;
+          doc["rfid"] = true;
+          doc["relay"] = (digitalRead(RELAY_PIN) == LOW);
+          doc["lcd"] = true;
+
+          JsonObject lfs = doc.createNestedObject("littlefs");
+          lfs["totalMB"] = String(totalMB, 2);
+          lfs["usedMB"] = String(usedMB, 2);
+          lfs["freeMB"] = String(freeMB, 2);
+          lfs["usagePercent"] = String(usagePct, 1);
+
+          doc["cardsCount"] = getRegisteredCardCount();
+          doc["pendingLogsCount"] = getPendingLogCount();
+
+          String jsonStr;
+          serializeJson(doc, jsonStr);
+
+          client.println("HTTP/1.1 200 OK");
+          client.println("Content-Type: application/json");
+          client.println("Access-Control-Allow-Origin: *");
+          client.println("Connection: close");
+          client.println();
+          client.println(jsonStr);
+        } else {
+          // HTML WEBPAGE YANITI (512-Byte Parçalı Akış)
+          String htmlStr = String(FPSTR(STATUS_PANEL_HTML));
+          client.println("HTTP/1.1 200 OK");
+          client.println("Content-Type: text/html; charset=utf-8");
+          client.println("Content-Length: " + String(htmlStr.length()));
+          client.println("Connection: close");
+          client.println();
+
+          // W5500 Ethernet Soket Paketi Kesilmesini Önlemek İçin 512 Baytlık Parçalarla Gönder
+          size_t totalLen = htmlStr.length();
+          size_t pos = 0;
+          while (pos < totalLen) {
+            size_t chunkSize = totalLen - pos;
+            if (chunkSize > 512) chunkSize = 512;
+            client.write((const uint8_t*)(htmlStr.c_str() + pos), chunkSize);
+            pos += chunkSize;
+          }
+        }
+        break;
+      }
+      if (c == '\n') {
+        currentLineIsBlank = true;
+      } else if (c != '\r') {
+        currentLineIsBlank = false;
+      }
+    }
+  }
+
+  delay(10);
+  client.stop();
+  selectRFID();
 }

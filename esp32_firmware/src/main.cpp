@@ -2,7 +2,7 @@
  * ============================================================================
  * PROJE ADI: ESP32 Çevrimdışı Destekli Akıllı Kartlı Geçiş Kontrol Sistemi
  * DOSYA: esp32_firmware/src/main.cpp
- * AÇIKLAMA: Ana Kontrol Döngüsü (Modüler Mimari)
+ * AÇIKLAMA: Ana Kontrol Döngüsü (Modüler Mimari + Yerel Cihaz Durum Paneli)
  * ============================================================================
  */
 
@@ -11,6 +11,7 @@
 #include "HardwareDriver.h"
 #include "StorageManager.h"
 #include "NetworkManager.h"
+#include "DisplayManager.h"
 
 // ============================================================================
 // SETUP (BAŞLANGIÇ AYARLARI)
@@ -20,51 +21,62 @@ void setup() {
   delay(1000);
   Serial.println("\n==================================================");
   Serial.println("🚀 ESP32 AKILLI KARTLI GEÇİŞ SİSTEMİ BAŞLATILIYOR");
-  Serial.print("🚪 Cihazın Bağlı Olduğu Kapı: ");
+  Serial.print("🆔 Cihaz ID  : ");
+  Serial.println(DEVICE_ID);
+  Serial.print("🚪 Kapı İsmi : ");
   Serial.println(DEVICE_GATE);
   Serial.println("==================================================");
 
   // 1. Donanım Pinleri ve SPI Veri Yolunu Başlat (Röle Active-Low)
   setupHardware();
 
-  // 2. LittleFS Dosya Sistemini Başlat (cards.json & pendingLogs.json)
+  // 2. 16x2 Karakter LCD Ekranı Başlat (SDA=21, SCL=22)
+  initDisplay();
+
+  // 3. LittleFS Dosya Sistemini Başlat (cards.json & pendingLogs.json)
   initStorage();
 
-  // 3. W5500 Ethernet ve Ağ Sunucu Senkronizasyonunu Başlat
+  // 4. W5500 Ethernet ve Ağ Sunucu Senkronizasyonunu Başlat (Web Status Server Port 80)
   initNetwork();
 
-  // 4. MFRC522 RFID Okuyucu Başlatma
+  // 5. MFRC522 RFID Okuyucu Başlatma
   selectRFID();
   rfid.PCD_Init();
   byte version = rfid.PCD_ReadRegister(MFRC522::VersionReg);
   Serial.print("📡 MFRC522 RFID Okuyucu Versiyonu: 0x");
   Serial.println(version, HEX);
   Serial.println("👉 Sistem Hazır! Kart Okutulması Bekleniyor...\n");
+
+  // LCD Ekranı Bekleme Moduna ("KARTINIZI OKUTUNUZ") Al
+  displayStandby();
 }
 
 // ============================================================================
 // MAIN LOOP (SÜREKLİ DÖNGÜ)
 // ============================================================================
 void loop() {
-  // 1. Periyodik İnternet Bağlantısı Kontrolü (10 saniyede bir)
+  // 1. Gelen Yerel ESP32 Cihaz Durum Web İsteklerini İşle (Port 80)
+  handleStatusWebRequests();
+
+  // 2. Periyodik İnternet Bağlantısı Kontrolü (10 saniyede bir)
   if (millis() - lastHeartbeat > HEARTBEAT_INTERVAL) {
     lastHeartbeat = millis();
     checkEthernetConnection();
   }
 
-  // 2. Periyodik Olarak API'den cards.json Güncelleme (5 dakikada bir)
+  // 3. Periyodik Olarak API'den cards.json Güncelleme (5 dakikada bir)
   if (isInternetAvailable && (millis() - lastCardsSync > CARDS_SYNC_INTERVAL)) {
     lastCardsSync = millis();
     updateLocalCardsFromAPI();
   }
 
-  // 3. Yeni Kart Okutuldu mu Kontrol Et
+  // 4. Yeni Kart Okutuldu mu Kontrol Et
   selectRFID();
   if (!rfid.PICC_IsNewCardPresent() || !rfid.PICC_ReadCardSerial()) {
     return;
   }
 
-  // 4. Okunan Kart UID Numarasını Boşluksuz String Formatına Çevir (Örn: "E49A1277")
+  // 5. Okunan Kart UID Numarasını Boşluksuz String Formatına Çevir (Örn: "E49A1277")
   String cardUID = "";
   for (byte i = 0; i < rfid.uid.size; i++) {
     if (rfid.uid.uidByte[i] < 0x10) cardUID += "0";
@@ -77,7 +89,7 @@ void loop() {
   Serial.print(" @ Kapı: ");
   Serial.println(DEVICE_GATE);
 
-  // 5. Kart Okuma İşlemini İşle (Online REST API veya Offline LittleFS)
+  // 6. Kart Okuma İşlemini İşle (Online REST API veya Offline LittleFS)
   handleCardRead(cardUID);
 
   // RFID Okuyucuyu Bir Sonraki Okumaya Hazırla
