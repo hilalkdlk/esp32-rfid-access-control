@@ -127,7 +127,7 @@ void updateLocalCardsFromAPI() {
     if (jsonStart != -1) {
       String jsonBody = response.substring(jsonStart);
       
-      DynamicJsonDocument doc(4096);
+      DynamicJsonDocument doc(16384);
       DeserializationError err = deserializeJson(doc, jsonBody);
       
       if (!err) {

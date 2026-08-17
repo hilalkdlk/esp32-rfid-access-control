@@ -21,7 +21,7 @@ bool checkCardAuthorizationOffline(String cardUID, String &foundHolderName) {
   }
 
   File file = LittleFS.open("/cards.json", "r");
-  DynamicJsonDocument doc(4096);
+  DynamicJsonDocument doc(16384);
   DeserializationError error = deserializeJson(doc, file);
   file.close();
 
@@ -66,7 +66,7 @@ bool checkCardAuthorizationOffline(String cardUID, String &foundHolderName) {
 
 // 📁 Çevrimdışı Log Kaydı (LittleFS pendingLogs.json Dosyasına Çoklu Dizi Olarak Ekleme)
 void logAccessOffline(String cardUID, bool isGranted, String holderName) {
-  DynamicJsonDocument doc(4096);
+  DynamicJsonDocument doc(16384);
   JsonArray array;
 
   if (LittleFS.exists("/pendingLogs.json")) {
@@ -152,7 +152,7 @@ float getLittleFSUsagePercentage() {
 int getRegisteredCardCount() {
   if (!LittleFS.exists("/cards.json")) return 0;
   File file = LittleFS.open("/cards.json", "r");
-  DynamicJsonDocument doc(4096);
+  DynamicJsonDocument doc(16384);
   DeserializationError err = deserializeJson(doc, file);
   file.close();
   if (!err && doc.is<JsonArray>()) {
@@ -164,7 +164,7 @@ int getRegisteredCardCount() {
 int getPendingLogCount() {
   if (!LittleFS.exists("/pendingLogs.json")) return 0;
   File file = LittleFS.open("/pendingLogs.json", "r");
-  DynamicJsonDocument doc(4096);
+  DynamicJsonDocument doc(16384);
   DeserializationError err = deserializeJson(doc, file);
   file.close();
   if (!err && doc.is<JsonArray>()) {
