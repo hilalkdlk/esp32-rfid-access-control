@@ -17,23 +17,23 @@
 #define LCD_I2C_ADDR    0x27 // 16x2 LCD PCF8574 I2C Adresi
 #define LCD_COLS        16   // LCD Satır Başı Karakter Sayısı (16 Sütun)
 #define LCD_ROWS        2    // LCD Satır Sayısı (2 Satır)
-
+    
 // SPI Pinleri (Sabit Hardware SPI): SCK = 18, MISO = 19, MOSI = 23
 
 // ----------------------------------------------------------------------------
 // ÇİFT ESP32 CİHAZ YAPILANDIRMASI (KAPI-1 VEYA KAPI-2 SEÇİMİ)
 // ----------------------------------------------------------------------------
-/*
+
 // === 1. ESP32 CİHAZI (Ana Giriş Turnikesi - KAPI-1) ===
  const char DEVICE_ID[] = "KAPI-1";
  const char DEVICE_GATE[] = "Ana Giriş Turnikesi";
  const byte MAC_ADDRESS[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-*/
+/*
 // === 2. ESP32 CİHAZI (AR-GE Laboratuvar Kapısı - KAPI-2) - [ŞU AN YÜKLEMEYE HAZIR AKTİF] ===
 const char DEVICE_ID[] = "KAPI-2";
 const char DEVICE_GATE[] = "AR-GE Laboratuvar Kapısı";
 const byte MAC_ADDRESS[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xEE };
-
+*/
 // ----------------------------------------------------------------------------
 // REST API SUNUCU VE ZAMAN AYARLARI
 // ----------------------------------------------------------------------------

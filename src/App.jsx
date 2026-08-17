@@ -25,19 +25,42 @@ export default function App() {
     }, 4500);
   };
 
-  // 1. Initial Load: Fetch Live Cards, Logs, and System Health from API & Firestore
+  // 1. Initial Load & Real-Time EventSource (SSE) Streaming Entegrasyonu
   useEffect(() => {
     fetchLiveCards();
     fetchLiveLogs();
     checkApiHealth();
 
-    // Live Auto-Refresh Interval (Every 5 seconds, auto-sync new physical ESP32 & LittleFS logs!)
-    const autoRefreshInterval = setInterval(() => {
-      fetchLiveLogs();
-      fetchLiveCards();
-    }, 5000);
+    // SSE Canlı Akış Dinleyicisi (Sıfır Periyodik Sorgu, %100 Reaktif Saliselik Canlı Yayın)
+    const eventSource = new EventSource(`${API_BASE}/logs/stream`);
 
-    return () => clearInterval(autoRefreshInterval);
+    // A) Yeni Kart Okutulduğunda (ESP32 veya Simülatörden) Logu Anında Ekrana Ekle
+    eventSource.addEventListener('new_log', (event) => {
+      try {
+        const newLog = JSON.parse(event.data);
+        setLogs(prevLogs => {
+          // Mükerrer eklemeyi önlemek için kontrol et
+          if (prevLogs.some(l => l.id === newLog.id)) return prevLogs;
+          return [newLog, ...prevLogs];
+        });
+      } catch (err) {
+        console.error('SSE Log Format Hatası:', err);
+      }
+    });
+
+    // B) Çevrimdışı LittleFS Logları Senkronize Edildiğinde Log Listesini Tazele
+    eventSource.addEventListener('sync_logs', () => {
+      fetchLiveLogs();
+    });
+
+    // C) Kart Listesi Değiştiğinde (Ekleme/Düzenleme/Silme) Kartları Güncelle
+    eventSource.addEventListener('cards_updated', () => {
+      fetchLiveCards();
+    });
+
+    return () => {
+      eventSource.close();
+    };
   }, []);
 
   // Fetch Cards from API & Firestore
