@@ -37,7 +37,7 @@ const byte MAC_ADDRESS[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xEE };
 // ----------------------------------------------------------------------------
 // REST API SUNUCU VE ZAMAN AYARLARI
 // ----------------------------------------------------------------------------
-const char API_HOST[] = "10.130.0.71";
+const char API_HOST[] = "esp32-server.local";
 const int API_PORT = 5000;
 
 const unsigned long HEARTBEAT_INTERVAL = 10000;   // 10 saniyede bir internet & otomatik senkron kontrolü

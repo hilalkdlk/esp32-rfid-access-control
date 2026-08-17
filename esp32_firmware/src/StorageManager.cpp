@@ -88,27 +88,18 @@ void logAccessOffline(String cardUID, bool isGranted, String holderName) {
   if (baseTimestampStr.length() >= 19 && baseSyncMillis > 0) {
     int y, m, d, hh, mm, ss;
     if (sscanf(baseTimestampStr.c_str(), "%d-%d-%d %d:%d:%d", &y, &m, &d, &hh, &mm, &ss) == 6) {
-      struct tm t = {0};
-      t.tm_year = y - 1900;
-      t.tm_mon = m - 1;
-      t.tm_mday = d;
-      t.tm_hour = hh;
-      t.tm_min = mm;
-      t.tm_sec = ss;
-
-      time_t epoch = mktime(&t);
       unsigned long elapsedSec = (millis() - baseSyncMillis) / 1000;
-      epoch += elapsedSec;
+      ss += (int)(elapsedSec % 60);
+      if (ss >= 60) { ss -= 60; mm++; }
 
-      struct tm *resTime = localtime(&epoch);
+      mm += (int)((elapsedSec / 60) % 60);
+      if (mm >= 60) { mm -= 60; hh++; }
+
+      hh += (int)((elapsedSec / 3600) % 24);
+      if (hh >= 24) { hh -= 24; d++; }
+
       char buf[30];
-      snprintf(buf, sizeof(buf), "%04d-%02d-%02d %02d:%02d:%02d",
-               resTime->tm_year + 1900,
-               resTime->tm_mon + 1,
-               resTime->tm_mday,
-               resTime->tm_hour,
-               resTime->tm_min,
-               resTime->tm_sec);
+      snprintf(buf, sizeof(buf), "%04d-%02d-%02d %02d:%02d:%02d", y, m, d, hh, mm, ss);
       currentTimestamp = String(buf);
     }
   }

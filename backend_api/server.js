@@ -10,6 +10,7 @@
 import express from 'express'; // Web sunucusu ve API rotaları için
 import cors from 'cors';       // Güvenli erişim izinleri için
 import dotenv from 'dotenv';   // Ortam değişkenleri okuyucu (.env)
+import { Bonjour } from 'bonjour-service'; // Yerel mDNS alan adı yayını için (esp32-server.local)
 import { admin, db } from './firebase.js'; // Firebase Admin ve Firestore Veritabanı Sürücüsü
 
 // 2. ORTAM DEĞİŞKENLERİNİ YÜKLE
@@ -22,6 +23,20 @@ const PORT = process.env.PORT || 5000;
 // 4. ARA YAZILIMLAR (MIDDLEWARE)
 app.use(cors());          // Tüm kaynaklardan (React paneli, ESP32) gelen HTTP isteklerine izin ver
 app.use(express.json());  // Gelen JSON verilerini otomatik nesneye dönüştür (req.body)
+
+// 5. mDNS (BONJOUR) YEREL ALAN ADI YAYINI (esp32-server.local)
+try {
+  const bonjour = new Bonjour();
+  bonjour.publish({
+    name: 'esp32-server',
+    type: 'http',
+    port: PORT,
+    host: 'esp32-server.local'
+  });
+  console.log('📡 [mDNS YAYINI AKTİF] Yerel alan adı yayını başlatıldı -> http://esp32-server.local:5000');
+} catch (err) {
+  console.warn('⚠️ [mDNS UYARI] Bonjour yerel alan adı başlatılamadı:', err.message);
+}
 
 // Türkiye Saat Dilimi (Europe/Istanbul UTC+3) İle Formatlama Fonksiyonu
 const getTurkeyFormattedTimestamp = () => {
@@ -42,31 +57,6 @@ const getTurkeyFormattedTimestamp = () => {
   return `${hash.year}-${hash.month}-${hash.day} ${hash.hour}:${hash.minute}:${hash.second}`;
 };
 
-// Server-Sent Events (SSE) İstemci Yöneticisi ve Yayın Fonksiyonu
-const sseClients = new Set();
-
-const broadcastSSE = (eventType, data) => {
-  const payload = `event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`;
-  sseClients.forEach(client => {
-    try {
-      client.write(payload);
-    } catch (err) {
-      sseClients.delete(client);
-    }
-  });
-};
-
-// SSE Periyodik Heartbeat (Bağlantıların Kapanmasını Önlemek İçin 20sn)
-setInterval(() => {
-  sseClients.forEach(client => {
-    try {
-      client.write(`: heartbeat\n\n`);
-    } catch (err) {
-      sseClients.delete(client);
-    }
-  });
-}, 20000);
-
 // ============================================================================
 // REST API ROTALARI (FIRESTORE VERİTABANI ENTEGRELİ)
 // ============================================================================
@@ -77,44 +67,6 @@ setInterval(() => {
  * ----------------------------------------------------------------------------
  * Yön: GET /
  */
-app.get('/', (req, res) => {
-  res.send(`
-    <div style="font-family: Arial, sans-serif; text-align: center; padding: 40px; background: #0b1329; color: #ffffff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-      <h1 style="color: #38bdf8; margin-bottom: 8px;">🚀 ESP32 Node.js REST API & Firestore Sunucusu Çalışıyor</h1>
-      <p style="color: #cbd5e1; max-width: 600px; font-size: 0.95rem;">
-        Bu API sunucusu ESP32 MFRC522/W5500 donanımı ve React Web Arayüzü için canlı veri servis etmektedir.
-      </p>
-      <div style="margin-top: 24px; display: flex; gap: 14px; flex-wrap: wrap;">
-        <a href="/api/health" style="padding: 10px 18px; background: #0284c7; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 0.88rem;">🔍 Sağlık Testi (/api/health)</a>
-        <a href="/api/cards" style="padding: 10px 18px; background: #059669; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 0.88rem;">🎴 Kart Listesi (/api/cards)</a>
-        <a href="/api/logs" style="padding: 10px 18px; background: #e11d48; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 0.88rem;">📋 Geçiş Logları (/api/logs)</a>
-      </div>
-    </div>
-  `);
-});
-
-/**
- * ----------------------------------------------------------------------------
- * 0.1 CANLI SSE CANLI AKIŞ ENDPOINT'İ (SERVER-SENT EVENTS)
- * ----------------------------------------------------------------------------
- * Yön: GET /api/logs/stream
- */
-app.get('/api/logs/stream', (req, res) => {
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-
-  res.write(`: sse connected\n\n`);
-  sseClients.add(res);
-
-  console.log(`📡 [SSE BAĞLANTISI] Yeni arayüz istemcisi canlı akışa bağlandı (Toplam Dinleyici: ${sseClients.size})`);
-
-  req.on('close', () => {
-    sseClients.delete(res);
-    console.log(`🔌 [SSE AYRILDI] İstemci ayrıldı (Kalan Dinleyici: ${sseClients.size})`);
-  });
-});
 
 /**
  * ----------------------------------------------------------------------------
@@ -280,9 +232,6 @@ app.put('/api/cards/:id', async (req, res) => {
 
     console.log(`[FIRESTORE] Kart Bilgileri Güncellendi: ID ${id} -> ${holderName || doc.data().holderName}`);
 
-    // SSE Yayın: Kart listesi güncellendi
-    broadcastSSE('cards_updated', { message: 'card updated' });
-
     res.json({
       success: true,
       message: "Kart bilgileri başarıyla güncellendi.",
@@ -342,9 +291,6 @@ app.delete('/api/cards/:id', async (req, res) => {
     await db.collection('cards').doc(id).delete();
     
     console.log(`[FIRESTORE] Kart Silindi: ID ${id}`);
-
-    // SSE Yayın: Kart silindi
-    broadcastSSE('cards_updated', { message: 'card deleted' });
 
     res.json({ success: true, message: "Kart veritabanından silindi." });
   } catch (error) {
@@ -471,9 +417,6 @@ app.post('/api/logs', async (req, res) => {
 
     const createdLogObj = { id: docRef.id, ...newLogData };
 
-    // SSE Canlı Yayın: Yeni geçen kartı anında (<50ms) açık olan tüm React sekmelerine push et!
-    broadcastSSE('new_log', createdLogObj);
-
     res.status(201).json({
       success: true,
       authorized: isAuthorized,
@@ -521,19 +464,38 @@ app.post('/api/logs/sync', async (req, res) => {
       const cleanLogUid = (pLog.uid || '').toUpperCase().replace(/\s+/g, '');
       const matchedCard = cardsMap.get(cleanLogUid);
 
-      const resolvedHolderName = matchedCard 
-        ? matchedCard.holderName 
-        : ((pLog.holderName && pLog.holderName !== 'Çevrimdışı Tanımsız Kullanıcı') ? pLog.holderName : 'Çevrimdışı Tanımsız Kullanıcı');
+      let resolvedHolderName = 'Tanımlanmamış Yabancı Kullanıcı';
+      let isAuthorized = false;
+      let statusText = 'Yetkisiz (Çevrimdışı)';
 
-      // FİZİKİ RÖLE DURUMUNUN KORUNMASI: Donanımda kapı açıldıysa (relayTriggered: true) arayüzde de yetkili göster
-      const isAuthorized = pLog.relayTriggered === true || (pLog.status && pLog.status.includes('Yetkili'));
+      if (matchedCard) {
+        resolvedHolderName = matchedCard.holderName;
+        const currentGate = pLog.gate || 'Ana Giriş Turnikesi';
+        const cardAccess = matchedCard.allowedGates || matchedCard.accessLevel;
+        
+        const hasGatePermission = (
+          cardAccess === "Tüm Kapılar / Yönetici" ||
+          (Array.isArray(cardAccess) && (cardAccess.includes("Tüm Kapılar / Yönetici") || cardAccess.includes(currentGate))) ||
+          (typeof cardAccess === 'string' && (cardAccess.includes("Tüm Kapılar") || cardAccess.includes(currentGate)))
+        );
 
-      let statusText = pLog.status || 'Yetkili';
-      if (isAuthorized) {
-        statusText = matchedCard ? 'Yetkili (Çevrimdışı Okutma)' : 'Yetkili (Çevrimdışı / Kayıtlı Kart)';
-      } else {
-        statusText = 'Yetkisiz (Çevrimdışı)';
+        if (matchedCard.status === 'Aktif' && (hasGatePermission || pLog.relayTriggered === true)) {
+          isAuthorized = true;
+          statusText = 'Yetkili (Çevrimdışı Okutma)';
+        } else if (!hasGatePermission) {
+          statusText = 'Kapı Yetkisi Yok (Çevrimdışı)';
+        } else {
+          statusText = 'Kullanıcı Engelli (Çevrimdışı)';
+        }
+      } else if (pLog.relayTriggered === true || (pLog.status && pLog.status.includes('Yetkili'))) {
+        isAuthorized = true;
+        resolvedHolderName = (pLog.holderName && pLog.holderName !== 'Çevrimdışı Tanımsız Kullanıcı') ? pLog.holderName : 'Çevrimdışı İzinli Kullanıcı';
+        statusText = 'Yetkili (Çevrimdışı Okutma)';
+      } else if (pLog.holderName && pLog.holderName !== 'Çevrimdışı Tanımsız Kullanıcı') {
+        resolvedHolderName = pLog.holderName;
       }
+
+      const scanTime = (pLog.timestamp && String(pLog.timestamp).length >= 10) ? pLog.timestamp : trTimestamp;
 
       batch.set(logRef, {
         uid: cleanLogUid || 'UNKNOWN',
@@ -541,9 +503,9 @@ app.post('/api/logs/sync', async (req, res) => {
         gate: pLog.gate || 'Ana Giriş Turnikesi',
         direction: pLog.direction || 'Giriş',
         status: statusText,
-        relayTriggered: Boolean(isAuthorized),
+        relayTriggered: isAuthorized,
         buzzerBeeps: isAuthorized ? 1 : 3,
-        timestamp: (pLog.timestamp && String(pLog.timestamp).length >= 10) ? pLog.timestamp : trTimestamp,
+        timestamp: scanTime,
         syncedToFirestore: true,
         syncedTime: trTimestamp,
         createdAt: admin.firestore.FieldValue.serverTimestamp()
@@ -553,9 +515,6 @@ app.post('/api/logs/sync', async (req, res) => {
     await batch.commit();
 
     console.log(`[FIRESTORE SENKRON OK] LittleFS üzerinden ${pendingLogs.length} adet çevrimdışı log Türkiye saatiyle (${trTimestamp}) Firestore'a aktarıldı.`);
-
-    // SSE Canlı Yayın: LittleFS senkronizasyonu bitti, açık olan React sekmelerine haber ver!
-    broadcastSSE('sync_logs', { syncedCount: pendingLogs.length });
 
     res.json({
       success: true,

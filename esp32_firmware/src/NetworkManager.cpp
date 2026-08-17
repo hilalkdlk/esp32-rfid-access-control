@@ -71,14 +71,31 @@ void checkEthernetConnection() {
   }
 }
 
+// 📡 REST API SUNUCUSUNA mDNS (esp32-server.local) VEYA YEDEK IP İLE BAĞLANTI
+bool connectToAPIServer() {
+  selectEthernet();
+
+  // 1. mDNS Yerel Alan Adı Üzerinden Bağlan (esp32-server.local:5000)
+  if (ethClient.connect(API_HOST, API_PORT)) {
+    return true;
+  }
+
+  // 2. mDNS Beklemedeyse Doğrudan Yedek IP Üzerinden Bağlan (10.130.0.40:5000)
+  IPAddress fallbackIP(10, 130, 0, 40);
+  if (ethClient.connect(fallbackIP, API_PORT)) {
+    return true;
+  }
+
+  return false;
+}
+
 // 🔄 API'DEN GÜNCEL KART LİSTESİNİ ÇEKİP LITTLEFS cards.json DOSYASINI OTOMATİK GÜNCELLEME
 void updateLocalCardsFromAPI() {
   if (!isInternetAvailable) return;
 
   Serial.println("⚡ [LITTLEFS SENKRON] REST API'den güncel cards.json listesi isteniyor...");
 
-  selectEthernet();
-  if (ethClient.connect(API_HOST, API_PORT)) {
+  if (connectToAPIServer()) {
     ethClient.println("GET /api/cards HTTP/1.1");
     ethClient.println("Host: " + String(API_HOST));
     ethClient.println("Connection: close");
@@ -133,8 +150,7 @@ void handleCardRead(String cardUID) {
   if (isInternetAvailable) {
     Serial.println("🌐 REST API'ye yetki kontrol isteği gönderiliyor...");
     
-    selectEthernet();
-    if (ethClient.connect(API_HOST, API_PORT)) {
+    if (connectToAPIServer()) {
       String postData = "{\"uid\":\"" + cardUID + "\",\"gate\":\"" + String(DEVICE_GATE) + "\",\"direction\":\"Giriş\"}";
       
       ethClient.println("POST /api/logs HTTP/1.1");
@@ -218,8 +234,7 @@ void syncPendingLogs() {
 
   Serial.println("⚡ [LITTLEFS SENKRON] Bekleyen tüm çevrimdışı loglar REST API'ye (Firestore) aktarılıyor...");
 
-  selectEthernet();
-  if (ethClient.connect(API_HOST, API_PORT)) {
+  if (connectToAPIServer()) {
     String postPayload = "{\"pendingLogs\":" + pendingJson + "}";
     
     ethClient.println("POST /api/logs/sync HTTP/1.1");
