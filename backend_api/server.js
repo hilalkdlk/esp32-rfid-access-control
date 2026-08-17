@@ -57,9 +57,61 @@ const getTurkeyFormattedTimestamp = () => {
   return `${hash.year}-${hash.month}-${hash.day} ${hash.hour}:${hash.minute}:${hash.second}`;
 };
 
+// Server-Sent Events (SSE) İstemci Yöneticisi ve Yayın Fonksiyonu
+const sseClients = new Set();
+
+const broadcastSSE = (eventType, data) => {
+  const payload = `event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`;
+  sseClients.forEach(client => {
+    try {
+      client.write(payload);
+    } catch (err) {
+      sseClients.delete(client);
+    }
+  });
+};
+
+// SSE Periyodik Heartbeat (Bağlantıların Kapanmasını Önlemek İçin 20sn)
+setInterval(() => {
+  sseClients.forEach(client => {
+    try {
+      client.write(`: heartbeat\n\n`);
+    } catch (err) {
+      sseClients.delete(client);
+    }
+  });
+}, 20000);
+
 // ============================================================================
 // REST API ROTALARI (FIRESTORE VERİTABANI ENTEGRELİ)
 // ============================================================================
+
+/**
+ * ----------------------------------------------------------------------------
+ * 0. CANLI SSE CANLI AKIŞ ENDPOINT'İ (SERVER-SENT EVENTS)
+ * ----------------------------------------------------------------------------
+ * Yön: GET /api/logs/stream
+ */
+app.get('/api/logs/stream', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('X-Accel-Buffering', 'no');
+
+  // Express.js İçi HTTP Yanıt Başlıklarını Anında Zorla Gönder (Pending Durumunu Önler)
+  res.flushHeaders();
+
+  res.write(`: sse connected\n\n`);
+  sseClients.add(res);
+
+  console.log(`📡 [SSE CANLI AKIŞ] İstemci bağlandı -> Canlı akış aktif (Aktif Dinleyici: ${sseClients.size})`);
+
+  req.on('close', () => {
+    sseClients.delete(res);
+    console.log(`⚠️ [SSE AYRILDI] İstemci bağlantısı kesildi (Kalan Dinleyici: ${sseClients.size})`);
+  });
+});
 
 /**
  * ----------------------------------------------------------------------------
@@ -232,6 +284,9 @@ app.put('/api/cards/:id', async (req, res) => {
 
     console.log(`[FIRESTORE] Kart Bilgileri Güncellendi: ID ${id} -> ${holderName || doc.data().holderName}`);
 
+    // SSE Yayın: Kart listesi güncellendi
+    broadcastSSE('cards_updated', { message: 'card updated' });
+
     res.json({
       success: true,
       message: "Kart bilgileri başarıyla güncellendi.",
@@ -268,6 +323,9 @@ app.put('/api/cards/:id/status', async (req, res) => {
 
     console.log(`[FIRESTORE] Kart Durumu Güncellendi: ID ${id} -> ${status}`);
 
+    // SSE Yayın: Kart listesi güncellendi
+    broadcastSSE('cards_updated', { message: 'card status updated' });
+
     res.json({
       success: true,
       message: "Kart durumu başarıyla güncellendi.",
@@ -291,6 +349,9 @@ app.delete('/api/cards/:id', async (req, res) => {
     await db.collection('cards').doc(id).delete();
     
     console.log(`[FIRESTORE] Kart Silindi: ID ${id}`);
+
+    // SSE Yayın: Kart silindi
+    broadcastSSE('cards_updated', { message: 'card deleted' });
 
     res.json({ success: true, message: "Kart veritabanından silindi." });
   } catch (error) {
@@ -417,6 +478,9 @@ app.post('/api/logs', async (req, res) => {
 
     const createdLogObj = { id: docRef.id, ...newLogData };
 
+    // SSE Canlı Yayın: Yeni geçen kartı anında (<50ms) açık olan tüm React sekmelerine push et!
+    broadcastSSE('new_log', createdLogObj);
+
     res.status(201).json({
       success: true,
       authorized: isAuthorized,
@@ -515,6 +579,9 @@ app.post('/api/logs/sync', async (req, res) => {
     await batch.commit();
 
     console.log(`[FIRESTORE SENKRON OK] LittleFS üzerinden ${pendingLogs.length} adet çevrimdışı log Türkiye saatiyle (${trTimestamp}) Firestore'a aktarıldı.`);
+
+    // SSE Canlı Yayın: LittleFS senkronizasyonu bitti, açık olan React sekmelerine haber ver!
+    broadcastSSE('sync_logs', { syncedCount: pendingLogs.length });
 
     res.json({
       success: true,

@@ -25,19 +25,55 @@ export default function App() {
     }, 4500);
   };
 
-  // 1. Initial Load & 30 Saniyelik Güvenilir Periyodik Otomatik Yenileme Döngüsü
+  // 1. Initial Load & Real-Time EventSource (SSE) Streaming Entegrasyonu
   useEffect(() => {
     fetchLiveCards();
     fetchLiveLogs();
     checkApiHealth();
 
-    // 30 saniyede bir verileri otomatik yenile
-    const interval = setInterval(() => {
-      fetchLiveLogs();
-      fetchLiveCards();
-    }, 30000);
+    let eventSource = null;
 
-    return () => clearInterval(interval);
+    try {
+      eventSource = new EventSource(`${API_BASE}/logs/stream`);
+
+      eventSource.onopen = () => {
+        console.log('📡 [SSE CANLI AKIŞ] Sunucuyla saliselik canlı akış kuruldu.');
+      };
+
+      // A) Yeni Kart Okutulduğunda (ESP32 veya Simülatörden) Logu Anında Ekrana Ekle
+      eventSource.addEventListener('new_log', (event) => {
+        try {
+          const newLog = JSON.parse(event.data);
+          setLogs(prevLogs => {
+            if (prevLogs.some(l => l.id === newLog.id)) return prevLogs;
+            return [newLog, ...prevLogs];
+          });
+        } catch (err) {
+          console.error('SSE Log Format Hatası:', err);
+        }
+      });
+
+      // B) Çevrimdışı LittleFS Logları Senkronize Edildiğinde Log Listesini Tazele
+      eventSource.addEventListener('sync_logs', () => {
+        console.log('⚡ [SSE SENKRON] Çevrimdışı LittleFS logları senkronize edildi, ekran tazedir.');
+        fetchLiveLogs();
+      });
+
+      // C) Kart Listesi Değiştiğinde (Ekleme/Düzenleme/Silme) Kartları Güncelle
+      eventSource.addEventListener('cards_updated', () => {
+        fetchLiveCards();
+      });
+
+      eventSource.onerror = () => {
+        console.warn('⚠️ [SSE UYARI] Canlı akış kesildi, otomatik yeniden bağlanılıyor...');
+      };
+    } catch (err) {
+      console.error('SSE Başlatma Hatası:', err);
+    }
+
+    return () => {
+      if (eventSource) eventSource.close();
+    };
   }, []);
 
   // Fetch Cards from API & Firestore
