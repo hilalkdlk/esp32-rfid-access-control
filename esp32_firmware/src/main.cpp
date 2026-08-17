@@ -64,11 +64,8 @@ void loop() {
     checkEthernetConnection();
   }
 
-  // 3. Periyodik Olarak API'den cards.json Güncelleme (5 dakikada bir)
-  if (isInternetAvailable && (millis() - lastCardsSync > CARDS_SYNC_INTERVAL)) {
-    lastCardsSync = millis();
-    updateLocalCardsFromAPI();
-  }
+  // 3. Web Panelinden Gelen Anlık UDP Kart Değişiklik Sinyalini Dinle (Port 5001 - Anında LittleFS Güncelleme)
+  listenForCardSyncUDPSignal();
 
   // 4. Yeni Kart Okutuldu mu Kontrol Et
   selectRFID();

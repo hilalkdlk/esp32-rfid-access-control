@@ -1,10 +1,13 @@
 #include "NetworkManager.h"
 #include "StatusPanelHTML.h"
+#include <EthernetUdp.h>
 
 bool isInternetAvailable = false;
 unsigned long lastHeartbeat = 0;
 unsigned long lastCardsSync = 0;
 EthernetClient ethClient;
+EthernetUDP cardSyncUDP;
+const uint16_t UDP_CARD_SYNC_PORT = 5001;
 String lastScannedUID = "Henüz Yok";
 String lastScannedResult = "-";
 
@@ -43,8 +46,13 @@ void initNetwork() {
 
   // Yerel Cihaz Durum Arayüzü Sunucusunu Başlat (Port 80)
   statusServer.begin();
+  
+  // Anlık Kart Güncelleme UDP Dinleyicisini Başlat (Port 5001)
+  cardSyncUDP.begin(UDP_CARD_SYNC_PORT);
+
   if (isInternetAvailable) {
     Serial.println("🖥️ Yerel Cihaz Durum Paneli Aktif -> http://" + Ethernet.localIP().toString() + "/");
+    Serial.println("⚡ Anlık UDP Kart Güncelleme Dinleyicisi Aktif -> Port 5001");
   } else {
     Serial.println("🖥️ Yerel Cihaz Durum Paneli Aktif (Port 80 dinleniyor, IP bekleniyor)");
   }
@@ -350,5 +358,24 @@ void handleStatusWebRequests() {
 
   delay(10);
   client.stop();
+  selectRFID();
+}
+
+// ⚡ Anlık UDP Kart Güncelleme Sinyali Dinleyicisi (Port 5001)
+void listenForCardSyncUDPSignal() {
+  if (!isInternetAvailable) return;
+
+  selectEthernet();
+  int packetSize = cardSyncUDP.parsePacket();
+  if (packetSize) {
+    char packetBuffer[64];
+    int len = cardSyncUDP.read(packetBuffer, 63);
+    if (len > 0) packetBuffer[len] = 0;
+    
+    if (String(packetBuffer).indexOf("CARDS_UPDATED") != -1) {
+      Serial.println("⚡ [UDP SİNYAL ALINDI] Web panelinden kart değişikliği yapıldı! LittleFS cards.json anında güncelleniyor...");
+      updateLocalCardsFromAPI();
+    }
+  }
   selectRFID();
 }

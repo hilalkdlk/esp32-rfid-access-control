@@ -11,6 +11,7 @@ import express from 'express'; // Web sunucusu ve API rotaları için
 import cors from 'cors';       // Güvenli erişim izinleri için
 import dotenv from 'dotenv';   // Ortam değişkenleri okuyucu (.env)
 import { Bonjour } from 'bonjour-service'; // Yerel mDNS alan adı yayını için (esp32-server.local)
+import dgram from 'dgram';           // ESP32'ye anlık UDP kart güncelleme sinyali göndermek için
 import { admin, db } from './firebase.js'; // Firebase Admin ve Firestore Veritabanı Sürücüsü
 
 // 2. ORTAM DEĞİŞKENLERİNİ YÜKLE
@@ -81,6 +82,25 @@ setInterval(() => {
     }
   });
 }, 20000);
+
+// ESP32 Donanımına Anlık UDP Kart Değişikliği Bildirim Fonksiyonu (Port 5001)
+const notifyESP32CardsChanged = () => {
+  try {
+    const message = Buffer.from('CARDS_UPDATED');
+    const client = dgram.createSocket('udp4');
+    client.bind(() => {
+      client.setBroadcast(true);
+      client.send(message, 0, message.length, 5001, '255.255.255.255', (err) => {
+        client.close();
+        if (!err) {
+          console.log('⚡ [UDP BROADCAST] ESP32 donanımına anlık LittleFS cards.json yenileme sinyali gönderildi (Port 5001)');
+        }
+      });
+    });
+  } catch (err) {
+    console.error('⚠️ [UDP BROADCAST HATA] Sinyal gönderilemedi:', err.message);
+  }
+};
 
 // ============================================================================
 // REST API ROTALARI (FIRESTORE VERİTABANI ENTEGRELİ)
@@ -287,6 +307,9 @@ app.put('/api/cards/:id', async (req, res) => {
     // SSE Yayın: Kart listesi güncellendi
     broadcastSSE('cards_updated', { message: 'card updated' });
 
+    // UDP Yayın: ESP32 donanımına anında LittleFS tazeleme sinyali at
+    notifyESP32CardsChanged();
+
     res.json({
       success: true,
       message: "Kart bilgileri başarıyla güncellendi.",
@@ -326,6 +349,9 @@ app.put('/api/cards/:id/status', async (req, res) => {
     // SSE Yayın: Kart listesi güncellendi
     broadcastSSE('cards_updated', { message: 'card status updated' });
 
+    // UDP Yayın: ESP32 donanımına anında LittleFS tazeleme sinyali at
+    notifyESP32CardsChanged();
+
     res.json({
       success: true,
       message: "Kart durumu başarıyla güncellendi.",
@@ -352,6 +378,9 @@ app.delete('/api/cards/:id', async (req, res) => {
 
     // SSE Yayın: Kart silindi
     broadcastSSE('cards_updated', { message: 'card deleted' });
+
+    // UDP Yayın: ESP32 donanımına anında LittleFS tazeleme sinyali at
+    notifyESP32CardsChanged();
 
     res.json({ success: true, message: "Kart veritabanından silindi." });
   } catch (error) {

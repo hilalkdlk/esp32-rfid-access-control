@@ -20,6 +20,9 @@ void updateLocalCardsFromAPI();
 void syncPendingLogs();
 void handleCardRead(String cardUID);
 
+// ⚡ Anlık UDP Kart Güncelleme Sinyali Dinleyicisi (Port 5001)
+void listenForCardSyncUDPSignal();
+
 // 🌐 Yerel ESP32 Cihaz Durum Paneli (Device Status Panel Web Server - Port 80)
 void handleStatusWebRequests();
 
