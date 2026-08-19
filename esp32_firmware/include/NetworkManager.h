@@ -13,6 +13,7 @@ extern bool isInternetAvailable;
 extern unsigned long lastHeartbeat;
 extern unsigned long lastCardsSync;
 extern EthernetClient ethClient;
+extern IPAddress discoveredServerIP;
 
 void initNetwork();
 void checkEthernetConnection();

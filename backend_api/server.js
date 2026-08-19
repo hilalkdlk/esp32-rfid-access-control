@@ -25,6 +25,8 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());          // Tüm kaynaklardan (React paneli, ESP32) gelen HTTP isteklerine izin ver
 app.use(express.json());  // Gelen JSON verilerini otomatik nesneye dönüştür (req.body)
 
+import os from 'os';
+
 // 5. mDNS (BONJOUR) YEREL ALAN ADI YAYINI (esp32-server.local)
 try {
   const bonjour = new Bonjour();
@@ -38,6 +40,38 @@ try {
 } catch (err) {
   console.warn('⚠️ [mDNS UYARI] Bonjour yerel alan adı başlatılamadı:', err.message);
 }
+
+// 5.1. OTOMATİK IP KEŞFİ İÇİN PERİYODİK UDP BEACON YAYINI (Port 5002)
+const getLocalIPv4 = () => {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return '127.0.0.1';
+};
+
+const broadcastServerUDPBeacon = () => {
+  try {
+    const currentIp = getLocalIPv4();
+    const udpSocket = dgram.createSocket('udp4');
+    udpSocket.bind(() => {
+      udpSocket.setBroadcast(true);
+      const msg = Buffer.from(`SERVER_BEACON:${currentIp}:${PORT}`);
+      udpSocket.send(msg, 0, msg.length, 5002, '255.255.255.255', (err) => {
+        udpSocket.close();
+      });
+    });
+  } catch (e) {
+    // UDP Hata göz ardı edilir
+  }
+};
+
+setInterval(broadcastServerUDPBeacon, 3000); // 3 saniyede bir yerel ağa IP duyurusu fırlat
+console.log('📡 [UDP BEACON AKTİF] Otomatik IP Keşfi Port 5002 üzerinden başlatıldı.');
 
 // Türkiye Saat Dilimi (Europe/Istanbul UTC+3) İle Formatlama Fonksiyonu
 const getTurkeyFormattedTimestamp = () => {
@@ -588,7 +622,26 @@ app.post('/api/logs/sync', async (req, res) => {
         resolvedHolderName = pLog.holderName;
       }
 
-      const scanTime = (pLog.timestamp && String(pLog.timestamp).length >= 10) ? pLog.timestamp : trTimestamp;
+      let scanTime = trTimestamp;
+      if (pLog.timestamp && String(pLog.timestamp).length >= 10) {
+        scanTime = pLog.timestamp;
+      } else if (typeof pLog.secAgo === 'number' && pLog.secAgo >= 0) {
+        const pastDate = new Date(Date.now() - Math.round(pLog.secAgo) * 1000);
+        const options = {
+          timeZone: 'Europe/Istanbul',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        };
+        const parts = new Intl.DateTimeFormat('tr-TR', options).formatToParts(pastDate);
+        const hash = {};
+        parts.forEach(p => hash[p.type] = p.value);
+        scanTime = `${hash.year}-${hash.month}-${hash.day} ${hash.hour}:${hash.minute}:${hash.second}`;
+      }
 
       batch.set(logRef, {
         uid: cleanLogUid || 'UNKNOWN',

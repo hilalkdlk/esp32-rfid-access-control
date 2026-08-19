@@ -7,7 +7,10 @@ unsigned long lastHeartbeat = 0;
 unsigned long lastCardsSync = 0;
 EthernetClient ethClient;
 EthernetUDP cardSyncUDP;
+EthernetUDP serverBeaconUDP;
 const uint16_t UDP_CARD_SYNC_PORT = 5001;
+const uint16_t UDP_SERVER_BEACON_PORT = 5002;
+IPAddress discoveredServerIP(0, 0, 0, 0);
 String lastScannedUID = "Henüz Yok";
 String lastScannedResult = "-";
 
@@ -50,9 +53,12 @@ void initNetwork() {
   // Anlık Kart Güncelleme UDP Dinleyicisini Başlat (Port 5001)
   cardSyncUDP.begin(UDP_CARD_SYNC_PORT);
 
+  // Otomatik IP Keşfi UDP Dinleyicisini Başlat (Port 5002)
+  serverBeaconUDP.begin(UDP_SERVER_BEACON_PORT);
+
   if (isInternetAvailable) {
     Serial.println("🖥️ Yerel Cihaz Durum Paneli Aktif -> http://" + Ethernet.localIP().toString() + "/");
-    Serial.println("⚡ Anlık UDP Kart Güncelleme Dinleyicisi Aktif -> Port 5001");
+    Serial.println("⚡ Anlık UDP Dinleyici Aktif -> Port 5001 & Port 5002 (Otomatik IP Keşfi)");
   } else {
     Serial.println("🖥️ Yerel Cihaz Durum Paneli Aktif (Port 80 dinleniyor, IP bekleniyor)");
   }
@@ -79,17 +85,24 @@ void checkEthernetConnection() {
   }
 }
 
-// 📡 REST API SUNUCUSUNA mDNS (esp32-server.local) VEYA YEDEK IP İLE BAĞLANTI
+// 📡 REST API SUNUCUSUNA OTOMATİK KEŞFEDİLEN IP, mDNS VEYA YEDEK IP İLE BAĞLANTI
 bool connectToAPIServer() {
   selectEthernet();
 
-  // 1. mDNS Yerel Alan Adı Üzerinden Bağlan (esp32-server.local:5000)
+  // 1. Otomatik UDP Beacon İle Keşfedilen Canlı Sunucu IP'si
+  if (discoveredServerIP[0] != 0) {
+    if (ethClient.connect(discoveredServerIP, API_PORT)) {
+      return true;
+    }
+  }
+
+  // 2. mDNS Yerel Alan Adı Üzerinden Bağlan (esp32-server.local:5000)
   if (ethClient.connect(API_HOST, API_PORT)) {
     return true;
   }
 
-  // 2. mDNS Beklemedeyse Doğrudan Yedek IP Üzerinden Bağlan (10.130.0.40:5000)
-  IPAddress fallbackIP(10, 130, 0, 40);
+  // 3. mDNS Beklemedeyse Doğrudan Yedek IP Üzerinden Bağlan (10.130.0.52:5000)
+  IPAddress fallbackIP(10, 130, 0, 52);
   if (ethClient.connect(fallbackIP, API_PORT)) {
     return true;
   }
@@ -361,11 +374,36 @@ void handleStatusWebRequests() {
   selectRFID();
 }
 
-// ⚡ Anlık UDP Kart Güncelleme Sinyali Dinleyicisi (Port 5001)
+// ⚡ Anlık UDP Kart Güncelleme & Otomatik IP Keşfi Dinleyicisi (Port 5001 & Port 5002)
 void listenForCardSyncUDPSignal() {
-  if (!isInternetAvailable) return;
-
   selectEthernet();
+
+  // 1. Port 5002 Sunucu Otomatik IP Keşfi UDP Duyurusu (SERVER_BEACON:10.130.0.52:5000)
+  int beaconPacketSize = serverBeaconUDP.parsePacket();
+  if (beaconPacketSize) {
+    char beaconBuffer[64];
+    int len = serverBeaconUDP.read(beaconBuffer, 63);
+    if (len > 0) beaconBuffer[len] = 0;
+    
+    String pkt = String(beaconBuffer);
+    if (pkt.startsWith("SERVER_BEACON:")) {
+      int firstColon = pkt.indexOf(':');
+      int secondColon = pkt.indexOf(':', firstColon + 1);
+      if (secondColon != -1) {
+        String discoveredIPStr = pkt.substring(firstColon + 1, secondColon);
+        IPAddress newIP;
+        if (newIP.fromString(discoveredIPStr)) {
+          if (discoveredServerIP != newIP) {
+            discoveredServerIP = newIP;
+            Serial.println("📡 [OTOMATİK IP KEŞFEDİLDİ] API Sunucusunun Canlı IP Adresi Bulundu -> " + discoveredServerIP.toString());
+            isInternetAvailable = true;
+          }
+        }
+      }
+    }
+  }
+
+  // 2. Port 5001 Anlık Kart Güncelleme Sinyali
   int packetSize = cardSyncUDP.parsePacket();
   if (packetSize) {
     char packetBuffer[64];

@@ -83,24 +83,31 @@ void logAccessOffline(String cardUID, bool isGranted, String holderName) {
     array = doc.to<JsonArray>();
   }
 
-  // Çevrimdışı kart okutma anındaki HASSAS GERÇEK SAAT HESABI (Saniye Hassasiyetinde)
+  // Çevrimdışı kart okutma anındaki HASSAS GERÇEK SAAT HESABI (Standard C mktime & strftime)
   String currentTimestamp = "";
+  unsigned long nowMillis = millis();
+  unsigned long elapsedSec = (nowMillis >= baseSyncMillis && baseSyncMillis > 0) ? ((nowMillis - baseSyncMillis) / 1000) : 0;
+
   if (baseTimestampStr.length() >= 19 && baseSyncMillis > 0) {
-    int y, m, d, hh, mm, ss;
+    int y = 0, m = 0, d = 0, hh = 0, mm = 0, ss = 0;
     if (sscanf(baseTimestampStr.c_str(), "%d-%d-%d %d:%d:%d", &y, &m, &d, &hh, &mm, &ss) == 6) {
-      unsigned long elapsedSec = (millis() - baseSyncMillis) / 1000;
-      ss += (int)(elapsedSec % 60);
-      if (ss >= 60) { ss -= 60; mm++; }
+      struct tm t;
+      memset(&t, 0, sizeof(struct tm));
+      t.tm_year = y - 1900;
+      t.tm_mon = m - 1;
+      t.tm_mday = d;
+      t.tm_hour = hh;
+      t.tm_min = mm;
+      t.tm_sec = ss;
 
-      mm += (int)((elapsedSec / 60) % 60);
-      if (mm >= 60) { mm -= 60; hh++; }
-
-      hh += (int)((elapsedSec / 3600) % 24);
-      if (hh >= 24) { hh -= 24; d++; }
-
-      char buf[30];
-      snprintf(buf, sizeof(buf), "%04d-%02d-%02d %02d:%02d:%02d", y, m, d, hh, mm, ss);
-      currentTimestamp = String(buf);
+      time_t baseUnix = mktime(&t);
+      if (baseUnix != (time_t)(-1)) {
+        time_t currentUnix = baseUnix + elapsedSec;
+        struct tm *currentTm = localtime(&currentUnix);
+        char buf[30];
+        strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", currentTm);
+        currentTimestamp = String(buf);
+      }
     }
   }
 
@@ -111,8 +118,9 @@ void logAccessOffline(String cardUID, bool isGranted, String holderName) {
   newLog["direction"] = "Giriş";
   newLog["status"] = isGranted ? "Yetkili" : "Yetkisiz";
   newLog["relayTriggered"] = isGranted;
+  newLog["secAgo"] = elapsedSec; // ⏱️ Kartın kaç saniye önce okutulduğu bilgisi
   if (currentTimestamp.length() > 0) {
-    newLog["timestamp"] = currentTimestamp; // ⏱️ Kartın fiziki okunduğu TAM SANİYEYİ kaydet!
+    newLog["timestamp"] = currentTimestamp; // ⏱️ Kartın okunduğu TAM SANİYEYİ kaydet
   }
 
   File file = LittleFS.open("/pendingLogs.json", "w");
