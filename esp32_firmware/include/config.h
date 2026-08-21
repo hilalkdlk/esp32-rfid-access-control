@@ -21,23 +21,14 @@
 // SPI Pinleri (Sabit Hardware SPI): SCK = 18, MISO = 19, MOSI = 23
 
 // ----------------------------------------------------------------------------
-// ÇİFT ESP32 CİHAZ YAPILANDIRMASI (KAPI-1 VEYA KAPI-2 SEÇİMİ)
+// ZERO-CONFIG ELEKTRONİK ÇİP SERİ NUMARASI (eFuse MAC Hardware Derivation)
+// Tüm ESP32 kartlarına birebir aynı kodu yükleyebilirsiniz.
+// Her cihaz kendi fabrika seri numarasından ID (ESP32-XXXX) türetir.
 // ----------------------------------------------------------------------------
-
-// === 1. ESP32 CİHAZI (Ana Giriş Turnikesi - KAPI-1) ===
- const char DEVICE_ID[] = "KAPI-1";
- const char DEVICE_GATE[] = "Ana Giriş Turnikesi";
- const byte MAC_ADDRESS[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-/*
-// === 2. ESP32 CİHAZI (AR-GE Laboratuvar Kapısı - KAPI-2) - [ŞU AN YÜKLEMEYE HAZIR AKTİF] ===
-const char DEVICE_ID[] = "KAPI-2";
-const char DEVICE_GATE[] = "AR-GE Laboratuvar Kapısı";
-const byte MAC_ADDRESS[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xEE };
-*/
 // ----------------------------------------------------------------------------
-// REST API SUNUCU VE ZAMAN AYARLARI
+// REST API SUNUCU VE ZAMAN AYARLARI (SABİT SUNUCU IP MİMARİSİ)
 // ----------------------------------------------------------------------------
-const char API_HOST[] = "esp32-server.local";
+const char API_HOST[] = "10.130.0.57";
 const int API_PORT = 5000;
 
 const unsigned long HEARTBEAT_INTERVAL = 10000;   // 10 saniyede bir internet & otomatik senkron kontrolü

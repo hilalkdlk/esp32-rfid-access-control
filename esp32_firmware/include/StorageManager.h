@@ -8,8 +8,15 @@
 
 extern String baseTimestampStr;
 extern unsigned long baseSyncMillis;
+extern String activeGateName;
+extern bool isGateActive;
 
 void initStorage();
+String getAutoDeviceId();
+void getAutoMacAddress(byte* macOut);
+String getDeviceAssignedGate();
+bool getDeviceGateStatus();
+void saveDeviceAssignedGate(String newGateName, bool activeStatus = true);
 bool checkCardAuthorizationOffline(String cardUID, String &foundHolderName);
 void logAccessOffline(String cardUID, bool isGranted, String holderName);
 

@@ -1,5 +1,6 @@
 #include "DisplayManager.h"
 #include "NetworkManager.h"
+#include "StorageManager.h"
 
 // 16x2 I2C LCD Ekran Nesnesi (Adres: 0x27, 16 Sütun, 2 Satır)
 LiquidCrystal_I2C lcd(LCD_I2C_ADDR, LCD_COLS, LCD_ROWS);
@@ -42,13 +43,20 @@ void initDisplay() {
   delay(1200);
 }
 
-// 📺 Sabit Bekleme (Standby) Ekranı: "KARTINIZI OKUTUNUZ"
+// 📺 Sabit Bekleme (Standby) Ekranı: Aktifse "KARTINIZI OKUTUNUZ", Pasifse "PASIF KAPI HIZMET DISI"
 void displayStandby() {
   lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("   KARTINIZI    ");
-  lcd.setCursor(0, 1);
-  lcd.print("    OKUTUNUZ    ");
+  if (!isGateActive) {
+    lcd.setCursor(0, 0);
+    lcd.print("   PASIF KAPI   ");
+    lcd.setCursor(0, 1);
+    lcd.print(" HIZMET DISIDIR ");
+  } else {
+    lcd.setCursor(0, 0);
+    lcd.print("   KARTINIZI    ");
+    lcd.setCursor(0, 1);
+    lcd.print("    OKUTUNUZ    ");
+  }
 }
 
 // 🔓 Kart Okutulunca Erişim Varsa (Yetkili): "GECIS YAPABILIRSINIZ"
@@ -60,11 +68,17 @@ void displayAccessGranted(String holderName) {
   lcd.print(" YAPABILIRSINIZ ");
 }
 
-// 🔒 Kart Okutulunca Erişim Yoksa (Yetkisiz): Sadece "ERISIM YOK"
+// 🔒 Kart Okutulunca Erişim Yoksa (Yetkisiz): "ERISIM YOK"
 void displayAccessDenied(String reasonText) {
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("   ERISIM YOK   ");
   lcd.setCursor(0, 1);
-  lcd.print("                ");
+  if (reasonText.length() > 0 && reasonText.length() <= 16) {
+    int padding = (16 - reasonText.length()) / 2;
+    for (int i = 0; i < padding; i++) lcd.print(" ");
+    lcd.print(reasonText);
+  } else {
+    lcd.print("                ");
+  }
 }

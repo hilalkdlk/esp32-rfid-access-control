@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Search, Plus, ShieldCheck, ShieldAlert, Trash2, Zap, UserCheck, CreditCard, GraduationCap, Briefcase, Edit3, X, CheckCircle2, PlusCircle, AlertCircle } from 'lucide-react';
 import { DEPARTMENTS, FACULTIES, STUDENT_DEPARTMENTS, GATES } from '../data/initialData';
 
-export default function CardListScreen({ cards, onUpdateCard, onToggleCardStatus, onDeleteCard, onNavigateToAdd, onSimulateCard }) {
+export default function CardListScreen({ cards = [], gates = [], onUpdateCard, onToggleCardStatus, onDeleteCard, onNavigateToAdd, onSimulateCard }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('ALL');
 
@@ -17,19 +17,22 @@ export default function CardListScreen({ cards, onUpdateCard, onToggleCardStatus
   const [editStatus, setEditStatus] = useState('Aktif');
   const [editError, setEditError] = useState('');
 
-  const ALL_PERMISSIONS = ["Tüm Kapılar / Yönetici", ...GATES];
+  const safeGates = Array.isArray(gates) && gates.length > 0 ? gates.map(g => g.name || g) : [];
+  const ALL_PERMISSIONS = ["Tüm Kapılar / Yönetici", ...safeGates];
+  const safeCards = Array.isArray(cards) ? cards : [];
 
-  const filteredCards = cards.filter(card => {
+  const filteredCards = safeCards.filter(card => {
+    if (!card) return false;
     const matchesSearch = (card.holderName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                           (card.employeeId || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = selectedType === 'ALL' || card.cardType === selectedType;
     return matchesSearch && matchesType;
   });
 
-  const activeCount = cards.filter(c => c.status === 'Aktif').length;
-  const blockedCount = cards.filter(c => c.status === 'Engelli').length;
-  const studentCount = cards.filter(c => c.cardType === 'Öğrenci').length;
-  const staffCount = cards.filter(c => c.cardType === 'Personel' || !c.cardType).length;
+  const activeCount = safeCards.filter(c => c && c.status === 'Aktif').length;
+  const blockedCount = safeCards.filter(c => c && c.status === 'Engelli').length;
+  const studentCount = safeCards.filter(c => c && c.cardType === 'Öğrenci').length;
+  const staffCount = safeCards.filter(c => c && (c.cardType === 'Personel' || !c.cardType)).length;
 
   const openEditModal = (card) => {
     setEditingCard(card);
@@ -207,48 +210,51 @@ export default function CardListScreen({ cards, onUpdateCard, onToggleCardStatus
           </thead>
           <tbody>
             {filteredCards.length > 0 ? (
-              filteredCards.map(card => (
-                <tr key={card.id}>
-                  <td style={{ fontWeight: 700, color: '#ffffff', fontSize: '0.94rem' }}>
-                    {card.holderName}
-                  </td>
-                  <td>
-                    <span style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      padding: '4px 10px',
-                      borderRadius: '6px',
-                      fontSize: '0.78rem',
-                      fontWeight: 700,
-                      background: card.cardType === 'Öğrenci' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(2, 132, 199, 0.2)',
-                      color: card.cardType === 'Öğrenci' ? '#7dd3fc' : '#38bdf8',
-                      border: `1px solid ${card.cardType === 'Öğrenci' ? 'rgba(56, 189, 248, 0.4)' : 'rgba(2, 132, 199, 0.4)'}`
-                    }}>
-                      {card.cardType === 'Öğrenci' ? <GraduationCap size={13} /> : <Briefcase size={13} />}
-                      {card.cardType || 'Personel'}
-                    </span>
-                  </td>
-                  <td style={{ color: '#cbd5e1', fontSize: '0.84rem', fontFamily: 'var(--font-mono)' }}>{card.employeeId}</td>
-                  <td style={{ fontSize: '0.84rem', color: '#e2e8f0' }}>
-                    {card.cardType === 'Öğrenci' && card.faculty && card.faculty !== 'N/A' ? (
-                      <div>
-                        <div style={{ fontWeight: 600, color: '#f8fafc' }}>{card.faculty}</div>
-                        <div style={{ fontSize: '0.76rem', color: '#94a3b8' }}>{card.department}</div>
-                      </div>
-                    ) : (
-                      card.department
-                    )}
-                  </td>
-                  <td style={{ fontSize: '0.84rem', color: '#7dd3fc', fontWeight: 600 }}>
-                    {card.accessLevel}
-                  </td>
-                  <td>
-                    <span className={card.status === 'Aktif' ? 'badge badge-active' : 'badge badge-blocked'}>
-                      {card.status === 'Aktif' ? <ShieldCheck size={13} /> : <ShieldAlert size={13} />}
-                      {card.status}
-                    </span>
-                  </td>
+              filteredCards.map((card, idx) => {
+                if (!card) return null;
+                const cardKey = card.id || card.uid || `card-key-${idx}`;
+                return (
+                  <tr key={cardKey}>
+                    <td style={{ fontWeight: 700, color: '#ffffff', fontSize: '0.94rem' }}>
+                      {card.holderName || 'Tanımsız Kullanıcı'}
+                    </td>
+                    <td>
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        background: card.cardType === 'Öğrenci' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(2, 132, 199, 0.2)',
+                        color: card.cardType === 'Öğrenci' ? '#7dd3fc' : '#38bdf8',
+                        border: `1px solid ${card.cardType === 'Öğrenci' ? 'rgba(56, 189, 248, 0.4)' : 'rgba(2, 132, 199, 0.4)'}`
+                      }}>
+                        {card.cardType === 'Öğrenci' ? <GraduationCap size={13} /> : <Briefcase size={13} />}
+                        {card.cardType || 'Personel'}
+                      </span>
+                    </td>
+                    <td style={{ color: '#cbd5e1', fontSize: '0.84rem', fontFamily: 'var(--font-mono)' }}>{card.employeeId || '-'}</td>
+                    <td style={{ fontSize: '0.84rem', color: '#e2e8f0' }}>
+                      {card.cardType === 'Öğrenci' && card.faculty && card.faculty !== 'N/A' ? (
+                        <div>
+                          <div style={{ fontWeight: 600, color: '#f8fafc' }}>{card.faculty}</div>
+                          <div style={{ fontSize: '0.76rem', color: '#94a3b8' }}>{card.department || '-'}</div>
+                        </div>
+                      ) : (
+                        card.department || card.faculty || '-'
+                      )}
+                    </td>
+                    <td style={{ fontSize: '0.84rem', color: '#7dd3fc', fontWeight: 600 }}>
+                      {Array.isArray(card.allowedGates) ? card.allowedGates.join(', ') : (card.accessLevel || 'Ana Giriş Turnikesi')}
+                    </td>
+                    <td>
+                      <span className={card.status === 'Aktif' ? 'badge badge-active' : 'badge badge-blocked'}>
+                        {card.status === 'Aktif' ? <ShieldCheck size={13} /> : <ShieldAlert size={13} />}
+                        {card.status || 'Aktif'}
+                      </span>
+                    </td>
                   <td style={{ textAlign: 'right' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
                       <button 
@@ -282,8 +288,9 @@ export default function CardListScreen({ cards, onUpdateCard, onToggleCardStatus
                     </div>
                   </td>
                 </tr>
-              ))
-            ) : (
+              );
+            })
+          ) : (
               <tr>
                 <td colSpan="7" style={{ textAlign: 'center', padding: '30px', color: '#cbd5e1' }}>
                   Kayıtlı kullanıcı bulunamadı.

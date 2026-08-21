@@ -18,13 +18,13 @@ void setupHardware() {
 
 // SPI CS Seçicileri
 void selectRFID() {
-  digitalWrite(W5500_CS, HIGH);
-  digitalWrite(SS_PIN, LOW);
+  digitalWrite(W5500_CS, HIGH); // W5500 pasif
+  digitalWrite(SS_PIN, HIGH);   // MFRC522 hazir (MFRC522 kütüphanesi okuma sirasinda LOW yapar)
 }
 
 void selectEthernet() {
-  digitalWrite(SS_PIN, HIGH);
-  digitalWrite(W5500_CS, LOW);
+  digitalWrite(SS_PIN, HIGH);   // MFRC522 pasif
+  digitalWrite(W5500_CS, LOW);  // W5500 aktif
 }
 
 // 🔓 YETKİLİ GEÇİŞ: Röle 3 Saniye AÇIK (LOW)

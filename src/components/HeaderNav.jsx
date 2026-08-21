@@ -1,12 +1,16 @@
 import React from 'react';
-import { CreditCard, UserPlus, FileText, BarChart2, Wifi, WifiOff, Cpu } from 'lucide-react';
+import { CreditCard, UserPlus, DoorOpen, FileText, BarChart2, Wifi, WifiOff, Cpu } from 'lucide-react';
 
-export default function HeaderNav({ activeTab, setActiveTab, esp32Status, toggleESP32Online }) {
+export default function HeaderNav({ activeTab, setActiveTab, esp32Status = {}, toggleESP32Online }) {
+  const cardsCount = esp32Status?.cardsJsonCount || 0;
+  const isOnline = esp32Status?.isOnline !== false;
+
   const steps = [
-    { id: 'list', label: '1. Kart Listeleme', icon: CreditCard, countInfo: `${esp32Status.cardsJsonCount || 0} Kart Kayıtlı` },
+    { id: 'list', label: '1. Kart Listeleme', icon: CreditCard, countInfo: `${cardsCount} Kart Kayıtlı` },
     { id: 'add', label: '2. Kart Ekleme', icon: UserPlus, countInfo: 'Yeni RFID Kaydı' },
-    { id: 'logs', label: '3. Giriş Logları ve Simülasyon', icon: FileText, countInfo: 'Canlı Turnike Logları' },
-    { id: 'analytics', label: '4. İstatistik & Analiz', icon: BarChart2, countInfo: 'Grafik ve Raporlar' }
+    { id: 'gates', label: '3. Kapı & ESP32 Yönetimi', icon: DoorOpen, countInfo: 'Kablosuz Kapı Atama' },
+    { id: 'logs', label: '4. Giriş Logları ve Simülasyon', icon: FileText, countInfo: 'Canlı Turnike Logları' },
+    { id: 'analytics', label: '5. İstatistik & Analiz', icon: BarChart2, countInfo: 'Grafik ve Raporlar' }
   ];
 
   return (
@@ -30,18 +34,18 @@ export default function HeaderNav({ activeTab, setActiveTab, esp32Status, toggle
         {/* ESP32 Status Badge & Online Switch */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 14px', background: '#0b1329', border: '1px solid #293859', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600 }}>
-            <span className={esp32Status.isOnline ? "pulse-dot pulse-online" : "pulse-dot pulse-offline"}></span>
-            <span style={{ color: esp32Status.isOnline ? '#38bdf8' : '#f59e0b' }}>
-              {esp32Status.isOnline ? 'ESP32 Online (REST API)' : 'ESP32 Offline (LittleFS)'}
+            <span className={isOnline ? "pulse-dot pulse-online" : "pulse-dot pulse-offline"}></span>
+            <span style={{ color: isOnline ? '#38bdf8' : '#f59e0b' }}>
+              {isOnline ? 'ESP32 Online (REST API)' : 'ESP32 Offline (LittleFS)'}
             </span>
           </div>
 
           <button 
             onClick={toggleESP32Online}
-            className={`btn btn-sm ${esp32Status.isOnline ? 'btn-secondary' : 'btn-primary'}`}
+            className={`btn btn-sm ${isOnline ? 'btn-secondary' : 'btn-primary'}`}
             style={{ fontSize: '0.78rem', padding: '8px 14px' }}
           >
-            {esp32Status.isOnline ? (
+            {isOnline ? (
               <> <WifiOff size={14} color="#f59e0b" /> İnterneti Kes (Offline Mod) </>
             ) : (
               <> <Wifi size={14} /> İnterneti Bağla (Online Mod) </>
@@ -50,8 +54,8 @@ export default function HeaderNav({ activeTab, setActiveTab, esp32Status, toggle
         </div>
       </div>
 
-      {/* 4-Step Navigation Bar */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+      {/* 5-Step Navigation Bar */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px' }}>
         {steps.map((step) => {
           const Icon = step.icon;
           const isActive = activeTab === step.id;

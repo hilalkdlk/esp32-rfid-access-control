@@ -23,9 +23,12 @@ const formatTurkeyTimestamp = (ts) => {
   }
 };
 
-export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, syncPendingLogs, selectedCardForSim }) {
-  const [selectedCardId, setSelectedCardId] = useState(selectedCardForSim || cards[0]?.id || cards[0]?.uid || '');
-  const [selectedGate, setSelectedGate] = useState(GATES[0]);
+export default function AccessLogsScreen({ logs = [], setLogs, cards = [], gates = [], esp32Status = {}, syncPendingLogs, selectedCardForSim }) {
+  const safeCards = Array.isArray(cards) ? cards : [];
+  const safeLogs = Array.isArray(logs) ? logs : [];
+  const safeGates = Array.isArray(gates) && gates.length > 0 ? gates.map(g => g.name || g) : ["Ana Giriş Turnikesi", "AR-GE Laboratuvar Kapısı"];
+  const [selectedCardId, setSelectedCardId] = useState(selectedCardForSim || safeCards[0]?.id || safeCards[0]?.uid || '');
+  const [selectedGate, setSelectedGate] = useState(safeGates[0]);
   const [simFeedback, setSimFeedback] = useState(null);
   
   // Search & Date Range Filter States
@@ -292,7 +295,7 @@ export default function AccessLogsScreen({ logs, setLogs, cards, esp32Status, sy
               className="form-select"
               style={{ borderColor: '#38bdf8', fontWeight: 600, background: '#0b1329' }}
             >
-              {GATES.map(gate => (
+              {safeGates.map(gate => (
                 <option key={gate} value={gate}>{gate}</option>
               ))}
             </select>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import HeaderNav from './components/HeaderNav';
 import CardListScreen from './components/CardListScreen';
 import AddCardScreen from './components/AddCardScreen';
+import AddGateScreen from './components/AddGateScreen';
 import AccessLogsScreen from './components/AccessLogsScreen';
 import AnalyticsScreen from './components/AnalyticsScreen';
 import { INITIAL_ESP32_STATUS } from './data/initialData';
@@ -11,9 +12,11 @@ import { CheckCircle, AlertTriangle } from 'lucide-react';
 const API_BASE = 'http://localhost:5000/api';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('list'); // 'list' | 'add' | 'logs' | 'analytics'
+  const [activeTab, setActiveTab] = useState('list'); // 'list' | 'add' | 'gates' | 'logs' | 'analytics'
   const [cards, setCards] = useState([]);
   const [logs, setLogs] = useState([]);
+  const [gates, setGates] = useState([]);
+  const [devices, setDevices] = useState([]);
   const [esp32Status, setEsp32Status] = useState(INITIAL_ESP32_STATUS);
   const [selectedCardForSim, setSelectedCardForSim] = useState('');
   const [notification, setNotification] = useState(null);
@@ -29,6 +32,8 @@ export default function App() {
   useEffect(() => {
     fetchLiveCards();
     fetchLiveLogs();
+    fetchLiveGates();
+    fetchLiveDevices();
     checkApiHealth();
 
     let eventSource = null;
@@ -39,6 +44,14 @@ export default function App() {
       eventSource.onopen = () => {
         console.log('📡 [SSE CANLI AKIŞ] Sunucuyla saliselik canlı akış kuruldu.');
       };
+
+      eventSource.addEventListener('gates_updated', () => {
+        fetchLiveGates();
+      });
+
+      eventSource.addEventListener('device_updated', () => {
+        fetchLiveDevices();
+      });
 
       // A) Yeni Kart Okutulduğunda (ESP32 veya Simülatörden) Logu Anında Ekrana Ekle
       eventSource.addEventListener('new_log', (event) => {
@@ -102,6 +115,32 @@ export default function App() {
     }
   };
 
+  // Fetch Gates from API
+  const fetchLiveGates = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/gates`);
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setGates(json.data);
+      }
+    } catch (err) {
+      console.log('Gates API Offline');
+    }
+  };
+
+  // Fetch Devices from API
+  const fetchLiveDevices = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/devices`);
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setDevices(json.data);
+      }
+    } catch (err) {
+      console.log('Devices API Offline');
+    }
+  };
+
   // Check API Health
   const checkApiHealth = async () => {
     try {
@@ -116,6 +155,81 @@ export default function App() {
       }
     } catch (err) {
       setEsp32Status(prev => ({ ...prev, isOnline: false }));
+    }
+  };
+
+  // Add Gate Handler
+  const handleAddGate = async (newGate) => {
+    try {
+      const res = await fetch(`${API_BASE}/gates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newGate)
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(`Yeni Kapı ('${newGate.name}') eklendi!`, 'success');
+        fetchLiveGates();
+      } else {
+        showToast(json.error || 'Kapı eklenirken hata oluştu.', 'error');
+      }
+    } catch (err) {
+      showToast('Kapı ekleme isteği başarısız.', 'error');
+    }
+  };
+
+  // Update Gate Handler
+  const handleUpdateGate = async (gateId, updatedFields) => {
+    try {
+      const res = await fetch(`${API_BASE}/gates/${gateId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedFields)
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast('Kapı bilgileri güncellendi ve kablosuz UDP sinyali gönderildi!', 'success');
+        fetchLiveGates();
+        fetchLiveDevices();
+        fetchLiveCards();
+      }
+    } catch (err) {
+      showToast('Kapı güncelleme isteği başarısız.', 'error');
+    }
+  };
+
+  // Delete Gate Handler
+  const handleDeleteGate = async (gateId) => {
+    if (!window.confirm('Bu kapıyı silmek istediğinizden emin misiniz?')) return;
+    try {
+      const res = await fetch(`${API_BASE}/gates/${gateId}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (json.success) {
+        showToast('Kapı silindi ve kullanıcı izinlerinden temizlendi.', 'warning');
+        fetchLiveGates();
+        fetchLiveCards();
+        fetchLiveDevices();
+      }
+    } catch (err) {
+      showToast('Kapı silme başarısız.', 'error');
+    }
+  };
+
+  // Assign Device Gate Handler
+  const handleAssignDeviceGate = async (deviceId, gateName) => {
+    try {
+      const res = await fetch(`${API_BASE}/device/assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId, gateName })
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(`'${deviceId}' cihazının kapısı '${gateName}' olarak atandı ve kablosuz sinyal gönderildi!`, 'success');
+        fetchLiveDevices();
+      }
+    } catch (err) {
+      showToast('Cihaz kapısı atama başarısız.', 'error');
     }
   };
 
@@ -300,7 +414,7 @@ export default function App() {
         setActiveTab={setActiveTab} 
         esp32Status={{
           ...esp32Status,
-          pendingLogsCount: logs.filter(l => !l.syncedToFirestore).length
+          pendingLogsCount: (logs || []).filter(l => l && !l.syncedToFirestore).length
         }}
         toggleESP32Online={toggleESP32Online}
       />
@@ -308,14 +422,15 @@ export default function App() {
       {/* Screen 1: Kart Listeleme */}
       {activeTab === 'list' && (
         <CardListScreen 
-          cards={cards}
+          cards={cards || []}
+          gates={gates || []}
           onUpdateCard={handleUpdateCard}
           onToggleCardStatus={handleToggleCardStatus}
           onDeleteCard={handleDeleteCard}
           onNavigateToAdd={() => setActiveTab('add')}
           onSimulateCard={handleSimulateFromList}
-          logsCount={logs.length}
-          pendingCount={logs.filter(l => !l.syncedToFirestore).length}
+          logsCount={(logs || []).length}
+          pendingCount={(logs || []).filter(l => l && !l.syncedToFirestore).length}
         />
       )}
 
@@ -323,9 +438,23 @@ export default function App() {
       {activeTab === 'add' && (
         <AddCardScreen 
           cards={cards}
+          gates={gates}
           onAddCard={handleAddCard}
           onNavigateToLogs={() => setActiveTab('logs')}
           onNavigateToList={() => setActiveTab('list')}
+        />
+      )}
+
+      {/* Screen 3: Kapı & ESP32 Yönetimi */}
+      {activeTab === 'gates' && (
+        <AddGateScreen 
+          gates={gates}
+          devices={devices}
+          onAddGate={handleAddGate}
+          onUpdateGate={handleUpdateGate}
+          onDeleteGate={handleDeleteGate}
+          onAssignDeviceGate={handleAssignDeviceGate}
+          onNavigateToAddCard={() => setActiveTab('add')}
         />
       )}
 
@@ -335,6 +464,7 @@ export default function App() {
           logs={logs}
           setLogs={setLogs}
           cards={cards}
+          gates={gates}
           esp32Status={{
             ...esp32Status,
             pendingLogsCount: logs.filter(l => !l.syncedToFirestore).length

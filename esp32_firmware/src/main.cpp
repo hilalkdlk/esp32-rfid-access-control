@@ -21,10 +21,10 @@ void setup() {
   delay(1000);
   Serial.println("\n==================================================");
   Serial.println("🚀 ESP32 AKILLI KARTLI GEÇİŞ SİSTEMİ BAŞLATILIYOR");
-  Serial.print("🆔 Cihaz ID  : ");
-  Serial.println(DEVICE_ID);
-  Serial.print("🚪 Kapı İsmi : ");
-  Serial.println(DEVICE_GATE);
+  Serial.print("🆔 Cihaz ID (eFuse) : ");
+  Serial.println(getAutoDeviceId());
+  Serial.print("🚪 Kapı İsmi (Aktif): ");
+  Serial.println(activeGateName);
   Serial.println("==================================================");
 
   // 1. Donanım Pinleri ve SPI Veri Yolunu Başlat (Röle Active-Low)
@@ -69,7 +69,10 @@ void loop() {
 
   // 4. Yeni Kart Okutuldu mu Kontrol Et
   selectRFID();
-  if (!rfid.PICC_IsNewCardPresent() || !rfid.PICC_ReadCardSerial()) {
+  if (!rfid.PICC_IsNewCardPresent()) {
+    return;
+  }
+  if (!rfid.PICC_ReadCardSerial()) {
     return;
   }
 
@@ -84,7 +87,7 @@ void loop() {
   Serial.print("📡 [RFID KART OKUNDU] UID: ");
   Serial.print(cardUID);
   Serial.print(" @ Kapı: ");
-  Serial.println(DEVICE_GATE);
+  Serial.println(activeGateName);
 
   // 6. Kart Okuma İşlemini İşle (Online REST API veya Offline LittleFS)
   handleCardRead(cardUID);

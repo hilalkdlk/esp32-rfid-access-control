@@ -5,7 +5,7 @@ import { RefreshCw, ArrowRight, Sparkles, AlertCircle, CheckCircle2, PlusCircle,
 import { DEPARTMENTS, FACULTIES, STUDENT_DEPARTMENTS, GATES } from '../data/initialData';
 import { exportSampleTemplate } from '../utils/exportUtils';
 
-export default function AddCardScreen({ onAddCard, onNavigateToLogs, cards = [] }) {
+export default function AddCardScreen({ onAddCard, onNavigateToLogs, cards = [], gates = [] }) {
   // Card Type Selector: 'Öğrenci' | 'Personel' (Default: Öğrenci)
   const [cardType, setCardType] = useState('Öğrenci');
 
@@ -20,9 +20,12 @@ export default function AddCardScreen({ onAddCard, onNavigateToLogs, cards = [] 
   // Staff Specific Fields
   const [staffDepartment, setStaffDepartment] = useState(DEPARTMENTS[0]);
 
-  // Multi-select gates state
-  const ALL_PERMISSIONS = ["Tüm Kapılar / Yönetici", ...GATES];
-  const [selectedGates, setSelectedGates] = useState(["Ana Giriş Turnikesi"]);
+  // Multi-select gates state (Dynamically populated from registered gates database)
+  const dynamicGateNames = (Array.isArray(gates) && gates.length > 0)
+    ? gates.map(g => g.name || g)
+    : GATES;
+  const ALL_PERMISSIONS = ["Tüm Kapılar / Yönetici", ...dynamicGateNames];
+  const [selectedGates, setSelectedGates] = useState([dynamicGateNames[0] || "Ana Giriş Turnikesi"]);
 
   const [expiryDate, setExpiryDate] = useState('2026-12-31');
   const [status, setStatus] = useState('Aktif');

@@ -30,8 +30,10 @@ ESP32EthernetServer statusServer(80);
 void initNetwork() {
   selectEthernet();
   Ethernet.init(W5500_CS);
-  Serial.println("🌐 W5500 Ethernet başlatılıyor, DHCP'den IP alınıyor...");
-  if (Ethernet.begin((byte*)MAC_ADDRESS) == 0) {
+  Serial.println("🌐 W5500 Ethernet başlatılıyor, eFuse MAC adresiyle DHCP'den IP alınıyor...");
+  byte autoMac[6];
+  getAutoMacAddress(autoMac);
+  if (Ethernet.begin(autoMac) == 0) {
     Serial.println("⚠️ W5500 DHCP üzerinden IP alamadı. Çevrimdışı (LittleFS) modda devam ediliyor.");
     isInternetAvailable = false;
   } else {
@@ -85,34 +87,73 @@ void checkEthernetConnection() {
   }
 }
 
-// 📡 REST API SUNUCUSUNA OTOMATİK KEŞFEDİLEN IP, mDNS VEYA YEDEK IP İLE BAĞLANTI
+// 📡 REST API SUNUCUSUNA SABİT IP MİMARİSİ İLE DOĞRUDAN VE ANINDA BAĞLANTI
 bool connectToAPIServer() {
   selectEthernet();
 
-  // 1. Otomatik UDP Beacon İle Keşfedilen Canlı Sunucu IP'si
-  if (discoveredServerIP[0] != 0) {
-    if (ethClient.connect(discoveredServerIP, API_PORT)) {
-      return true;
+  // Sabit Sunucu IP Adresine Bağlan (10.130.0.57:5000)
+  if (ethClient.connect(API_HOST, API_PORT)) {
+    isInternetAvailable = true;
+    return true;
+  }
+
+  isInternetAvailable = false;
+  return false;
+}
+
+// 📡 REST API SUNUCUSUNDAN BU CİHAZIN ATANAN KAPI BİLGİSİNİ VE DURUMUNU ÇEKME
+void getDeviceConfigFromAPI() {
+  if (!isInternetAvailable) return;
+
+  if (connectToAPIServer()) {
+    String devId = getAutoDeviceId();
+    ethClient.println("GET /api/device/config?deviceId=" + devId + " HTTP/1.1");
+    ethClient.println("Host: " + String(API_HOST));
+    ethClient.println("Connection: close");
+    ethClient.println();
+
+    unsigned long timeout = millis();
+    while (ethClient.available() == 0) {
+      if (millis() - timeout > 3000) {
+        ethClient.stop();
+        selectRFID();
+        return;
+      }
+    }
+
+    String response = ethClient.readString();
+    ethClient.stop();
+    selectRFID();
+
+    int bodyStart = response.indexOf("\r\n\r\n");
+    if (bodyStart > 0) {
+      String jsonBody = response.substring(bodyStart + 4);
+      DynamicJsonDocument doc(1024);
+      DeserializationError err = deserializeJson(doc, jsonBody);
+      if (!err && doc["success"].as<bool>() == true) {
+        if (doc.containsKey("assignedGate")) {
+          String gateFromAPI = doc["assignedGate"].as<String>();
+          bool activeFromAPI = true;
+          if (doc.containsKey("gateStatus")) {
+            String statusStr = doc["gateStatus"].as<String>();
+            if (statusStr == "Pasif") activeFromAPI = false;
+          }
+          if (gateFromAPI.length() > 0 && (gateFromAPI != activeGateName || activeFromAPI != isGateActive)) {
+            Serial.println("📟 [CİHAZ YAPILANDIRMASI GÜNCELLENDİ] API'den Yeni Kapı Alındı -> " + gateFromAPI + (activeFromAPI ? " (Aktif)" : " (PASİF)"));
+            saveDeviceAssignedGate(gateFromAPI, activeFromAPI);
+            displayStandby();
+          }
+        }
+      }
     }
   }
-
-  // 2. mDNS Yerel Alan Adı Üzerinden Bağlan (esp32-server.local:5000)
-  if (ethClient.connect(API_HOST, API_PORT)) {
-    return true;
-  }
-
-  // 3. mDNS Beklemedeyse Doğrudan Yedek IP Üzerinden Bağlan (10.130.0.52:5000)
-  IPAddress fallbackIP(10, 130, 0, 52);
-  if (ethClient.connect(fallbackIP, API_PORT)) {
-    return true;
-  }
-
-  return false;
 }
 
 // 🔄 API'DEN GÜNCEL KART LİSTESİNİ ÇEKİP LITTLEFS cards.json DOSYASINI OTOMATİK GÜNCELLEME
 void updateLocalCardsFromAPI() {
   if (!isInternetAvailable) return;
+
+  getDeviceConfigFromAPI();
 
   Serial.println("⚡ [LITTLEFS SENKRON] REST API'den güncel cards.json listesi isteniyor...");
 
@@ -164,15 +205,29 @@ void updateLocalCardsFromAPI() {
 
 // 💳 KART OKUMA İŞLEMİ (ONLINE REST API VEYA OFFLINE LITTLEFS)
 void handleCardRead(String cardUID) {
+  // ⛔ EĞER KAPININ DURUMU "PASİF" İSE REDDET VE LCD'DE "KAPI PASIF" GÖSTER!
+  if (!isGateActive) {
+    Serial.println("⛔ [KAPI PASİF] Kapı pasif (hizmet dışı) durumdadır. Kart okuma reddedildi.");
+    lastScannedUID = cardUID;
+    lastScannedResult = "Reddedildi (Kapı Pasif)";
+    displayAccessDenied("KAPI PASIF");
+    denyAccess();
+    delay(2000);
+    displayStandby();
+    return;
+  }
+
   bool isAuthorized = false;
   bool processedOnline = false;
   String holderNameResolved = "Kullanici";
 
-  if (isInternetAvailable) {
-    Serial.println("🌐 REST API'ye yetki kontrol isteği gönderiliyor...");
-    
-    if (connectToAPIServer()) {
-      String postData = "{\"uid\":\"" + cardUID + "\",\"gate\":\"" + String(DEVICE_GATE) + "\",\"direction\":\"Giriş\"}";
+  // REST API Sunucusuna Bağlanmayı Dene (Canlı Güvenli Bağlantı)
+  Serial.println("🌐 REST API'ye yetki kontrol isteği gönderiliyor...");
+  if (connectToAPIServer()) {
+    // İnternet/API Erişimi Aktif - Bekleyen Çevrimdışı Log Varsa Önce Onları Senkronize Et!
+    syncPendingLogs();
+
+    String postData = "{\"uid\":\"" + cardUID + "\",\"gate\":\"" + activeGateName + "\",\"deviceId\":\"" + getAutoDeviceId() + "\",\"direction\":\"Giriş\"}";
       
       ethClient.println("POST /api/logs HTTP/1.1");
       ethClient.println("Host: " + String(API_HOST));
@@ -214,7 +269,6 @@ void handleCardRead(String cardUID) {
       Serial.println("⚠️ REST API Sunucusuna Bağlanılamadı! Çevrimdışı (LittleFS) doğrulama moduna geçiliyor.");
     }
     selectRFID();
-  }
 
   // --- EĞER ONLINE CEVAP ALINAMADIYSA ÇEVRİMDİŞİ (OFFLINE) MODA DÜŞ ---
   if (!processedOnline) {
@@ -271,8 +325,12 @@ void syncPendingLogs() {
     ethClient.stop();
     selectRFID();
 
-    // Senkronize edilen dosyayı temizle
-    LittleFS.remove("/pendingLogs.json");
+    // Senkronize edilen dosyayı boş dizi [] olarak sıfırla
+    File clearFile = LittleFS.open("/pendingLogs.json", "w");
+    if (clearFile) {
+      clearFile.print("[]");
+      clearFile.close();
+    }
     Serial.println("✅ [LITTLEFS SENKRON OK] Bekleyen tüm çevrimdışı loglar REST API'ye (Firestore) aktarıldı ve LittleFS temizlendi!");
   } else {
     selectRFID();
@@ -291,15 +349,23 @@ void handleStatusWebRequests() {
   unsigned long timeout = millis();
   String requestLine = "";
   boolean currentLineIsBlank = true;
-  while (client.connected() && (millis() - timeout < 1000)) {
+  boolean firstLineRead = false;
+
+  while (client.connected() && (millis() - timeout < 1200)) {
     if (client.available()) {
       char c = client.read();
-      if (requestLine.length() < 100) {
-        requestLine += c;
+      if (!firstLineRead && c != '\r' && c != '\n') {
+        if (requestLine.length() < 100) {
+          requestLine += c;
+        }
       }
+      if (c == '\n' && !firstLineRead) {
+        firstLineRead = true;
+      }
+
       if (c == '\n' && currentLineIsBlank) {
         // İSTEK ALINDI - YANIT OLUŞTUR
-        if (requestLine.indexOf("GET /api/status") >= 0) {
+        if (requestLine.indexOf("/api/status") >= 0) {
           // CANLI METRİK JSON YANITI
           size_t totalBytes = getLittleFSTotalBytes();
           size_t usedBytes = getLittleFSUsedBytes();
@@ -311,8 +377,9 @@ void handleStatusWebRequests() {
           float freeMB = (float)freeBytes / (1024.0 * 1024.0);
 
           DynamicJsonDocument doc(1024);
-          doc["deviceId"] = DEVICE_ID;
-          doc["gateName"] = DEVICE_GATE;
+          doc["deviceId"] = getAutoDeviceId();
+          doc["gateName"] = activeGateName;
+          doc["isGateActive"] = isGateActive;
           doc["ip"] = Ethernet.localIP().toString();
           doc["ethernet"] = (Ethernet.linkStatus() == LinkON);
           doc["apiServer"] = isInternetAvailable;
@@ -321,6 +388,9 @@ void handleStatusWebRequests() {
           doc["lcd"] = true;
 
           JsonObject lfs = doc.createNestedObject("littlefs");
+          lfs["totalBytes"] = totalBytes;
+          lfs["usedBytes"] = usedBytes;
+          lfs["freeBytes"] = freeBytes;
           lfs["totalMB"] = String(totalMB, 2);
           lfs["usedMB"] = String(usedMB, 2);
           lfs["freeMB"] = String(freeMB, 2);
@@ -338,6 +408,8 @@ void handleStatusWebRequests() {
           client.println("Content-Type: application/json");
           client.println("Access-Control-Allow-Origin: *");
           client.println("Connection: close");
+          client.print("Content-Length: ");
+          client.println(jsonStr.length());
           client.println();
           client.println(jsonStr);
         } else {
@@ -403,16 +475,44 @@ void listenForCardSyncUDPSignal() {
     }
   }
 
-  // 2. Port 5001 Anlık Kart Güncelleme Sinyali
+  // 2. Port 5001 Anlık Kart Güncelleme & Kablosuz Cihaz Kapısı Atama Sinyali
   int packetSize = cardSyncUDP.parsePacket();
   if (packetSize) {
-    char packetBuffer[64];
-    int len = cardSyncUDP.read(packetBuffer, 63);
+    char packetBuffer[128];
+    int len = cardSyncUDP.read(packetBuffer, 127);
     if (len > 0) packetBuffer[len] = 0;
     
-    if (String(packetBuffer).indexOf("CARDS_UPDATED") != -1) {
+    String pkt = String(packetBuffer);
+    if (pkt.indexOf("CARDS_UPDATED") != -1) {
       Serial.println("⚡ [UDP SİNYAL ALINDI] Web panelinden kart değişikliği yapıldı! LittleFS cards.json anında güncelleniyor...");
       updateLocalCardsFromAPI();
+    } else if (pkt.startsWith("DEVICE_GATE_UPDATED:")) {
+      // Format: DEVICE_GATE_UPDATED:<deviceId>:<newGateName>:<gateStatus>
+      int firstColon = pkt.indexOf(':');
+      int secondColon = pkt.indexOf(':', firstColon + 1);
+      if (secondColon != -1) {
+        String targetDeviceId = pkt.substring(firstColon + 1, secondColon);
+        String rest = pkt.substring(secondColon + 1);
+        int thirdColon = rest.indexOf(':');
+        
+        String newGateName = rest;
+        bool newGateStatus = true;
+
+        if (thirdColon != -1) {
+          newGateName = rest.substring(0, thirdColon);
+          String statusStr = rest.substring(thirdColon + 1);
+          statusStr.trim();
+          if (statusStr == "Pasif") newGateStatus = false;
+        }
+        newGateName.trim();
+
+        if (targetDeviceId == getAutoDeviceId()) {
+          Serial.println("📟 [KABLOSUZ KAPI ATANDI] Cihaz Kapısı -> " + newGateName + (newGateStatus ? " (Aktif)" : " (PASİF)"));
+          saveDeviceAssignedGate(newGateName, newGateStatus);
+          displayStandby();
+          updateLocalCardsFromAPI();
+        }
+      }
     }
   }
   selectRFID();

@@ -2,18 +2,99 @@
 
 String baseTimestampStr = "";
 unsigned long baseSyncMillis = 0;
+String activeGateName = "Ana Giriş Turnikesi";
+bool isGateActive = true;
+
+// 🆔 ESP32 ÇİPİNİN DÜNYADA TEK OLAN FABRİKA EFUSE SERİ NUMARASINDAN CİHAZ ID TÜRETME (ESP32-XXXX)
+String getAutoDeviceId() {
+  uint64_t chipid = ESP.getEfuseMac();
+  char idBuf[20];
+  snprintf(idBuf, sizeof(idBuf), "ESP32-%04X%04X", (uint16_t)(chipid >> 32), (uint16_t)(chipid & 0xFFFF));
+  return String(idBuf);
+}
+
+// 🌐 DONANIMA ÖZEL BENZERSİZ W5500 ETHERNET MAC ADRESİ TÜRETME
+void getAutoMacAddress(byte* macOut) {
+  uint64_t chipid = ESP.getEfuseMac();
+  macOut[0] = 0xDE;
+  macOut[1] = 0xAD;
+  macOut[2] = (byte)((chipid >> 24) & 0xFF);
+  macOut[3] = (byte)((chipid >> 16) & 0xFF);
+  macOut[4] = (byte)((chipid >> 8) & 0xFF);
+  macOut[5] = (byte)(chipid & 0xFF);
+}
+
+// 📁 LittleFS /config.json Dosyasından Atanan Kapı Adını Okuma
+String getDeviceAssignedGate() {
+  if (LittleFS.exists("/config.json")) {
+    File file = LittleFS.open("/config.json", "r");
+    DynamicJsonDocument doc(512);
+    DeserializationError err = deserializeJson(doc, file);
+    file.close();
+    if (!err && doc.containsKey("assignedGate")) {
+      return doc["assignedGate"].as<String>();
+    }
+  }
+  return "Ana Giriş Turnikesi";
+}
+
+// 📁 LittleFS /config.json Dosyasından Kapı Hizmet Durumunu Okuma
+bool getDeviceGateStatus() {
+  if (LittleFS.exists("/config.json")) {
+    File file = LittleFS.open("/config.json", "r");
+    DynamicJsonDocument doc(512);
+    DeserializationError err = deserializeJson(doc, file);
+    file.close();
+    if (!err && doc.containsKey("isGateActive")) {
+      return doc["isGateActive"].as<bool>();
+    }
+  }
+  return true;
+}
+
+// 📁 LittleFS /config.json Dosyasına Atanan Yeni Kapı Adını ve Durumunu Kaydetme
+void saveDeviceAssignedGate(String newGateName, bool activeStatus) {
+  activeGateName = newGateName;
+  isGateActive = activeStatus;
+
+  DynamicJsonDocument doc(512);
+  doc["assignedGate"] = newGateName;
+  doc["isGateActive"] = activeStatus;
+  doc["deviceId"] = getAutoDeviceId();
+
+  File file = LittleFS.open("/config.json", "w");
+  serializeJson(doc, file);
+  file.close();
+  Serial.println("💾 [LITTLEFS CONFIG OK] Cihaz Kapısı Kaydedildi -> " + newGateName + (isGateActive ? " (Aktif)" : " (PASİF)"));
+}
 
 void initStorage() {
   if (!LittleFS.begin(true)) {
     Serial.println("❌ [HATA] LittleFS Dosya Sistemi Başlatılamadı!");
   } else {
-    Serial.println("✅ LittleFS Bellek Hazır (cards.json & pendingLogs.json)");
+    Serial.println("✅ LittleFS Bellek Hazır (cards.json, pendingLogs.json & config.json)");
+    activeGateName = getDeviceAssignedGate();
+    isGateActive = getDeviceGateStatus();
+
+    // /pendingLogs.json yoksa boş dizi olarak oluştur (Terminal uyarı loglarını engellemek için)
+    if (!LittleFS.exists("/pendingLogs.json")) {
+      File file = LittleFS.open("/pendingLogs.json", "w");
+      if (file) {
+        file.print("[]");
+        file.close();
+      }
+    }
   }
 }
 
 // 📁 LittleFS cards.json Dosyasından Yetki Kontrolü
 bool checkCardAuthorizationOffline(String cardUID, String &foundHolderName) {
   foundHolderName = "Çevrimdışı Tanımsız Kullanıcı";
+
+  if (!isGateActive) {
+    Serial.println("🔒 [OFFLINE ERİŞİM REDDEDİLDİ] Kapı Pasif / Hizmet Dışıdır!");
+    return false;
+  }
 
   if (!LittleFS.exists("/cards.json")) {
     Serial.println("⚠️ LittleFS /cards.json dosyası henüz hafızada yok!");
@@ -47,7 +128,7 @@ bool checkCardAuthorizationOffline(String cardUID, String &foundHolderName) {
           JsonArray gates = card["allowedGates"].as<JsonArray>();
           for (JsonVariant g : gates) {
             String gateStr = g.as<String>();
-            if (gateStr == "Tüm Kapılar / Yönetici" || gateStr == String(DEVICE_GATE)) {
+            if (gateStr == "Tüm Kapılar / Yönetici" || gateStr == activeGateName) {
               Serial.println("✅ [OFFLINE İZİN VERİLDİ] LittleFS yetkisi doğrulandı -> " + foundHolderName);
               return true;
             }
@@ -114,7 +195,7 @@ void logAccessOffline(String cardUID, bool isGranted, String holderName) {
   JsonObject newLog = array.createNestedObject();
   newLog["uid"] = cardUID;
   newLog["holderName"] = holderName;
-  newLog["gate"] = DEVICE_GATE;
+  newLog["gate"] = activeGateName;
   newLog["direction"] = "Giriş";
   newLog["status"] = isGranted ? "Yetkili" : "Yetkisiz";
   newLog["relayTriggered"] = isGranted;

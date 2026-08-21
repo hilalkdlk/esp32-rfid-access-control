@@ -203,6 +203,364 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+// ----------------------------------------------------------------------------
+// 📟 DONANIM ESP32 CİHAZ YÖNETİMİ & KABLOSUZ KAPI ATAMA ENDPOINTLERİ
+// ----------------------------------------------------------------------------
+
+// GET /api/device/config - ESP32 Cihaz Yapılandırmasını Çek ve Otomatik Kaydet
+app.get('/api/device/config', async (req, res) => {
+  try {
+    const deviceId = req.query.deviceId || "ESP32-A4E2";
+    const clientIp = req.ip ? req.ip.replace('::ffff:', '') : '10.130.0.85';
+    const devRef = db.collection('devices').doc(deviceId);
+    const doc = await devRef.get();
+
+    let assignedGate = deviceId;
+    if (doc.exists && doc.data().assignedGate) {
+      assignedGate = doc.data().assignedGate;
+    }
+
+    let gateStatus = "Aktif";
+    const gateSnap = await db.collection('gates').where('name', '==', assignedGate).limit(1).get();
+    if (!gateSnap.empty) {
+      gateStatus = gateSnap.docs[0].data().status || "Aktif";
+    }
+
+    await devRef.set({
+      deviceId: deviceId,
+      assignedGate: assignedGate,
+      ipAddress: clientIp,
+      status: "Online",
+      lastSeen: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    res.json({
+      success: true,
+      deviceId: deviceId,
+      assignedGate: assignedGate,
+      gateStatus: gateStatus
+    });
+  } catch (error) {
+    console.error('[API HATA] Cihaz ayarları çekilirken hata:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/devices - Ağdaki Tüm ESP32 Cihazlarını ve Atanan Kapılarını Listele
+app.get('/api/devices', async (req, res) => {
+  try {
+    const snapshot = await db.collection('devices').get();
+    const devicesList = [];
+    snapshot.forEach(doc => {
+      devicesList.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+
+    res.json({
+      success: true,
+      data: devicesList
+    });
+  } catch (error) {
+    console.error('[API HATA] Cihazlar çekilirken hata:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/device/assign - ESP32 Cihazına Web Panelinden Yeni Kapı Ata
+app.post('/api/device/assign', async (req, res) => {
+  try {
+    const { deviceId, gateName } = req.body;
+
+    if (!deviceId || !gateName) {
+      return res.status(400).json({ success: false, message: "deviceId ve gateName zorunludur." });
+    }
+
+    const devRef = db.collection('devices').doc(deviceId);
+    await devRef.set({
+      deviceId: deviceId,
+      assignedGate: gateName.trim(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    console.log(`📟 [FIRESTORE] Cihaz Kapısı Atandı: ${deviceId} -> ${gateName}`);
+
+    let gateStatus = "Aktif";
+    const gateSnap = await db.collection('gates').where('name', '==', gateName.trim()).limit(1).get();
+    if (!gateSnap.empty) {
+      gateStatus = gateSnap.docs[0].data().status || "Aktif";
+    }
+
+    // ESP32 donanımına UDP sinyali at (DEVICE_GATE_UPDATED:<deviceId>:<gateName>:<gateStatus>)
+    try {
+      const client = dgram.createSocket('udp4');
+      client.bind(() => {
+        client.setBroadcast(true);
+        const msg = Buffer.from(`DEVICE_GATE_UPDATED:${deviceId}:${gateName.trim()}:${gateStatus}`);
+        client.send(msg, 0, msg.length, 5001, '255.255.255.255', () => {
+          client.close();
+        });
+      });
+    } catch (e) {
+      console.error('UDP Sinyal Hatası:', e);
+    }
+
+    broadcastSSE('device_updated', { deviceId, assignedGate: gateName });
+
+    res.json({
+      success: true,
+      message: `'${deviceId}' cihazının kapısı '${gateName}' olarak güncellendi ve kablosuz sinyal gönderildi.`,
+      data: { deviceId, assignedGate: gateName }
+    });
+  } catch (error) {
+    console.error('[API HATA] Cihaz kapısı atanırken hata:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /api/devices/:id - Eski veya Pasif Test Cihazını Sil
+app.delete('/api/devices/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.collection('devices').doc(id).delete();
+    console.log(`🗑️ [FIRESTORE] Cihaz Silindi: ${id}`);
+    broadcastSSE('devices_updated', { message: 'device deleted', id });
+    res.json({ success: true, message: "Cihaz silindi." });
+  } catch (error) {
+    console.error('[API HATA] Cihaz silinirken hata:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// 🚪 KAPILARI LİSTELEME, EKLEME, DÜZENLEME VE SİLME ENDPOINTLERİ
+// ----------------------------------------------------------------------------
+
+// GET /api/gates - Sistemdeki Tüm Kayıtlı Kapıları Getir
+app.get('/api/gates', async (req, res) => {
+  try {
+    const snapshot = await db.collection('gates').get();
+    const gatesList = [];
+    snapshot.forEach(doc => {
+      gatesList.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+
+    if (gatesList.length === 0) {
+      const defaultGates = [
+        { name: 'Ana Giriş Turnikesi', gateCode: 'KAPI-01', description: 'Ana Bina Turnike Geçişi', status: 'Aktif', ipAddress: '10.130.0.52' },
+        { name: 'AR-GE Laboratuvar Kapısı', gateCode: 'KAPI-02', description: 'B Blok AR-GE Laboratuvarı', status: 'Aktif', ipAddress: '10.130.0.53' }
+      ];
+      for (const g of defaultGates) {
+        const ref = await db.collection('gates').add({
+          ...g,
+          createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        gatesList.push({ id: ref.id, ...g });
+      }
+    }
+
+    res.json({ success: true, data: gatesList });
+  } catch (error) {
+    console.error('[API HATA] Kapılar getirilirken hata:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/gates - Yeni Kapı Ekle
+app.post('/api/gates', async (req, res) => {
+  try {
+    const { name, gateCode, description, status, ipAddress } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, error: "Kapı adı zorunludur." });
+    }
+
+    const newGate = {
+      name: name.trim(),
+      gateCode: (gateCode || 'KAPI-XX').trim(),
+      description: (description || '').trim(),
+      status: status || 'Aktif',
+      ipAddress: ipAddress ? ipAddress.trim() : '',
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    const docRef = await db.collection('gates').add(newGate);
+    console.log(`🚪 [FIRESTORE] Yeni Kapı Eklendi: ${newGate.name} (${newGate.gateCode})`);
+
+    broadcastSSE('gates_updated', { message: 'gate added' });
+    res.status(201).json({ success: true, message: "Kapı başarıyla eklendi.", data: { id: docRef.id, ...newGate } });
+  } catch (error) {
+    console.error('[API HATA] Kapı eklenirken hata:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT /api/gates/:id - Mevcut Kapıyı Güncelle (Ad, Kod, IP, Durum)
+app.put('/api/gates/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, gateCode, description, status, ipAddress } = req.body;
+
+    const gateRef = db.collection('gates').doc(id);
+    const gateDoc = await gateRef.get();
+    if (!gateDoc.exists) {
+      return res.status(404).json({ success: false, error: "Güncellenecek kapı bulunamadı." });
+    }
+
+    const oldName = gateDoc.data().name;
+    const updateData = {
+      ...(name && { name: name.trim() }),
+      ...(gateCode && { gateCode: gateCode.trim() }),
+      ...(description !== undefined && { description: description.trim() }),
+      ...(status && { status }),
+      ...(ipAddress !== undefined && { ipAddress: ipAddress.trim() }),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    await gateRef.set(updateData, { merge: true });
+    console.log(`🚪 [FIRESTORE] Kapı Güncellendi: ${oldName} -> ${name || oldName}`);
+
+    const targetName = name ? name.trim() : oldName;
+    const effectiveStatus = status || gateDoc.data().status || "Aktif";
+
+    if (name && name.trim() !== oldName) {
+      const newName = name.trim();
+      const batch = db.batch();
+
+      // 1. Cihazlara atanan kapı ismini güncelle
+      const devSnapshot = await db.collection('devices').where('assignedGate', '==', oldName).get();
+      devSnapshot.forEach(dDoc => {
+        batch.update(dDoc.ref, { assignedGate: newName });
+      });
+
+      // 2. Yetkili kartlardaki eski kapı iznini yeni kapı ismi ile güncelle
+      const cardsSnapshot = await db.collection('cards').get();
+      cardsSnapshot.forEach(cardDoc => {
+        const cardData = cardDoc.data();
+        let needsUpdate = false;
+        let updatedAllowed = Array.isArray(cardData.allowedGates) ? [...cardData.allowedGates] : [];
+        let updatedAccessLevel = cardData.accessLevel || '';
+
+        if (updatedAllowed.includes(oldName)) {
+          updatedAllowed = updatedAllowed.map(g => g === oldName ? newName : g);
+          needsUpdate = true;
+        }
+
+        if (updatedAccessLevel.includes(oldName)) {
+          updatedAccessLevel = updatedAccessLevel.replace(new RegExp(oldName, 'g'), newName);
+          needsUpdate = true;
+        }
+
+        if (needsUpdate) {
+          batch.update(cardDoc.ref, {
+            allowedGates: updatedAllowed,
+            accessLevel: updatedAccessLevel,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+        }
+      });
+
+      await batch.commit();
+      console.log(`🔑 [FIRESTORE] '${oldName}' kapısının ismi '${newName}' olarak güncellendi ve tüm kullanıcı izinleri aktarıldı.`);
+
+      // Eşleşmiş ESP32 Donanımlarına UDP Kablosuz Sinyal At
+      devSnapshot.forEach(dDoc => {
+        try {
+          const client = dgram.createSocket('udp4');
+          client.bind(() => {
+            client.setBroadcast(true);
+            const msg = Buffer.from(`DEVICE_GATE_UPDATED:${dDoc.id}:${newName}:${effectiveStatus}`);
+            client.send(msg, 0, msg.length, 5001, '255.255.255.255', () => { client.close(); });
+          });
+        } catch (e) {}
+      });
+    }
+
+    // ESP32 Donanımlarına Anında UDP Kablosuz Kart Güncelleme Sinyali At
+    try {
+      const client = dgram.createSocket('udp4');
+      client.bind(() => {
+        client.setBroadcast(true);
+        const msg = Buffer.from(`CARDS_UPDATED:ALL`);
+        client.send(msg, 0, msg.length, 5001, '255.255.255.255', () => { client.close(); });
+      });
+    } catch (e) {}
+
+    broadcastSSE('gates_updated', { message: 'gate updated' });
+    broadcastSSE('cards_updated', { message: 'cards updated after gate rename' });
+    res.json({ success: true, message: "Kapı ve tüm kullanıcı yetkileri başarıyla güncellendi.", data: { id, ...updateData } });
+  } catch (error) {
+    console.error('[API HATA] Kapı güncellenirken hata:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /api/gates/:id - Kapı Sil (ve Kullanıcı İzinlerinden Temizle)
+app.delete('/api/gates/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const gateDoc = await db.collection('gates').doc(id).get();
+    if (!gateDoc.exists) {
+      return res.status(404).json({ success: false, error: "Silinecek kapı bulunamadı." });
+    }
+
+    const deletedGateName = gateDoc.data().name;
+    await db.collection('gates').doc(id).delete();
+    console.log(`🚪 [FIRESTORE] Kapı Silindi: ${deletedGateName} (ID: ${id})`);
+
+    const batch = db.batch();
+
+    // 1. Cihazlardan silinen kapı atamasını temizle
+    const devSnap = await db.collection('devices').where('assignedGate', '==', deletedGateName).get();
+    devSnap.forEach(dDoc => {
+      batch.update(dDoc.ref, { assignedGate: dDoc.id });
+    });
+
+    // 2. Kullanıcı kartlarından silinen kapı ismini izinlerden kaldır
+    const cardSnap = await db.collection('cards').get();
+    cardSnap.forEach(cardDoc => {
+      const cardData = cardDoc.data();
+      let updatedAllowed = Array.isArray(cardData.allowedGates) ? [...cardData.allowedGates] : [];
+      let updatedAccessLevel = cardData.accessLevel || '';
+
+      if (updatedAllowed.includes(deletedGateName)) {
+        updatedAllowed = updatedAllowed.filter(g => g !== deletedGateName);
+        if (updatedAllowed.length === 0) {
+          updatedAllowed = [];
+        }
+        updatedAccessLevel = updatedAllowed.join(', ') || 'Yetki Yok';
+
+        batch.update(cardDoc.ref, {
+          allowedGates: updatedAllowed,
+          accessLevel: updatedAccessLevel,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      }
+    });
+
+    await batch.commit();
+
+    // ESP32 Donanımlarına UDP Kablosuz Sinyal At
+    try {
+      const client = dgram.createSocket('udp4');
+      client.bind(() => {
+        client.setBroadcast(true);
+        const msg = Buffer.from(`CARDS_UPDATED:ALL`);
+        client.send(msg, 0, msg.length, 5001, '255.255.255.255', () => { client.close(); });
+      });
+    } catch (e) {}
+
+    broadcastSSE('gates_updated', { message: 'gate deleted' });
+    res.json({ success: true, message: `'${deletedGateName}' kapısı silindi ve kullanıcı izinlerinden kaldırıldı.` });
+  } catch (error) {
+    console.error('[API HATA] Kapı silinirken hata:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 /**
  * ----------------------------------------------------------------------------
  * 2. YETKİLİ KART LİSTESİ ENDPOINT'İ (ESP32 LITTLEFS CARDS.JSON İÇİN)
@@ -679,11 +1037,11 @@ app.post('/api/logs/sync', async (req, res) => {
 // ============================================================================
 // EXPRESS SUNUCUSUNU BAŞLAT
 // ============================================================================
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n==================================================`);
   console.log(` ESP32 Node.js REST API & Firebase Firestore Aktif!`);
   console.log(` Sunucu Adresi : http://localhost:${PORT}`);
-  console.log(` Health Test    : http://localhost:${PORT}/api/health`);
-  console.log(` Kart Listesi   : http://localhost:${PORT}/api/cards`);
+  console.log(` Health Test    : http://127.0.0.1:${PORT}/api/health`);
+  console.log(` Kart Listesi   : http://127.0.0.1:${PORT}/api/cards`);
   console.log(`==================================================\n`);
 });
