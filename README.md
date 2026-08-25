@@ -40,7 +40,7 @@ Sistem, internet bağlantısı varken tüm geçiş verilerini ve kart izinlerini
 - **Dinamik Kapı & Donanım Eşleştirme:** Web arayüzünden yeni kapılar tanımlanabilir ve ağdaki ESP32 kartları tek tıkla ilgili kapılara atanabilir (`POST /api/device/assign`). Atama anında ESP32'ye UDP sinyali gönderilerek cihazın kapı ismi ve ekran yazısı canlı güncellenir.
 - **W5500 Ethernet Haberleşmesi:** Kablosuz parazitlerden etkilenmeyen, kesintisiz ve kararlı IP ağ iletişimi.
 - **MFRC522 RFID & Active-LOW Röle:** 13.56 MHz kart okuma ve optokuplör yalıtımlı elektronik kapı kilidi kontrolü (ilk açılışta güvenlik için kapalı başlar).
-- **16x2 I2C LCD Ekran (0x27):** Kullanıcıya anlık durum mesajları basar (*"LUTFEN KART OKUTUNUZ"*, *"GECIS ONAYLANDI"*, *"KAPI YETKISI YOK"*).
+- **16x2 I2C LCD Ekran (0x27):** Kullanıcıya anlık durum mesajları basar (*"KARTINIZI OKUTUNUZ"*, *"GECIS YAPABILIRSINIZ"*, *"ERISIM YOK"*).
 - **Çevrimdışı (Offline) Çalışma & Otomatik Senkronizasyon:** İnternet yokken LittleFS üzerindeki `cards.json` ile yetki kontrolü yapılır ve kayıtlar `pendingLogs.json` dosyasına yazılır. Bağlantı geldiğinde saniyeler içinde veritabanına aktarılır ve yerel hafıza temizlenir.
 - **ESP32 Dahili Cihaz Durum Paneli (Port 80):** Doğrudan ESP32'nin IP adresine (`http://<ESP32-IP>:80`) girildiğinde açılan, PROGMEM belleğe gömülü cihaz durum ve LittleFS bellek doluluk paneli.
 - **React Web Yönetim Paneli:**
