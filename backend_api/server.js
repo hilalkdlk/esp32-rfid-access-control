@@ -25,6 +25,17 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());          // Tüm kaynaklardan (React paneli, ESP32) gelen HTTP isteklerine izin ver
 app.use(express.json());  // Gelen JSON verilerini otomatik nesneye dönüştür (req.body)
 
+// Root (Ana Sayfa) Hoşgeldin ve Sağlık Rortası
+app.get('/', (req, res) => {
+  res.json({
+    status: 'ONLINE',
+    message: '🚀 ESP32 REST API Sunucusu Aktif ve Çalışıyor!',
+    health: 'http://localhost:5000/api/health',
+    cards: 'http://localhost:5000/api/cards',
+    logs: 'http://localhost:5000/api/logs'
+  });
+});
+
 import os from 'os';
 
 // 5. mDNS (BONJOUR) YEREL ALAN ADI YAYINI (esp32-server.local)
